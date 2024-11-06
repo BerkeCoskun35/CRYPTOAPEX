@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CryptoApex - Giriş Yap</title>
+    <link rel="stylesheet" href="static/styles.css">
+</head>
+<body>
+
+    <div class="navbar">
+        <h2><a href="/">CryptoApex</a></h2>
+        <div class="navbar-logo">
+        </div>
+    </div>
+
+    <!-- Giriş Yap Formu -->
+    <div class="form-container">
+        <h2>Giriş Yap</h2>
+        
+        {% if message %}
+        <script>
+            alert("{{ message }}");
+        </script>
+        {% endif %}
+
+        <form method="POST">  <!-- Ensure method is POST -->
+            <label for="username-email">Kullanıcı Adı veya E-posta</label>
+            <input type="text" id="username-email" name="username-email" placeholder="Kullanıcı adınızı veya e-postanızı girin" required>
+
+            <label for="password">Şifre</label>
+            <input type="password" id="password" name="password" placeholder="Şifrenizi girin" required>
+            
+            <button type="submit">Giriş Yap</button>
+        </form>
+    </div>
+    </script>
+
+</body>
+</html>

@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CryptoApex</title>
+    <link rel="stylesheet" href="static/styles.css">
+</head>
+<body>
+
+    <div class="navbar">
+        <h2><a href="/">CryptoApex</a></h2>
+        <div class="navbar-buttons">
+            <button class="notification-button" onclick="toggleNotificationPanel()">
+                <img src="static\images\notification.png" alt="Bildirim">
+            </button>
+            <button>
+                <a href="/register">
+                <img src="static\images\profile.png" alt="Profil">
+                </a>
+            </button>
+            <div id="notificationPanel" class="notification-panel">
+                <div class="notification-item">Yeni mesajınız var.</div>
+                <div class="notification-item">Profilinizi güncellemeyi unutmayın.</div>
+                <div class="notification-item">Sistem güncellemesi tamamlandı.</div>
+            </div>
+        </div>
+    </div>
+
+    <script src="static/script.js"></script>
+</body>
+</html>
