@@ -1,14 +1,3 @@
-
-/* Link Styles */
-a {
-    color: inherit; /* Inherit color from parent element */
-    text-decoration: none; /* Remove underline */
-}
-
-a:hover {
-    color: #ffffff; /* Change color on hover */
-    text-decoration: none; /* Ensure underline stays removed on hover */
-}
 /* Global Styles */
 * {
     margin: 0;
@@ -17,8 +6,9 @@ a:hover {
 }
 
 body {
-    background-color: #080a0f;
+    margin: 0;
     font-family: Arial, sans-serif;
+    background-color: #080a0f;
     color: white;
     display: flex;
     flex-direction: column;
@@ -100,6 +90,96 @@ body {
     background-color: #333;
 }
 
+/* Crypto Cards Styles */
+.crypto-cards {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-around;
+    padding: 20px;
+}
+
+.crypto-card {
+    background-color: #1c1c1c;
+    border-radius: 10px;
+    width: 300px;
+    padding: 20px;
+    text-align: center;
+    margin: 10px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+}
+
+.crypto-card img {
+    width: 50px;
+    margin-bottom: 10px;
+    left: 0%;
+}
+
+.crypto-card h3 {
+    font-size: 24px;
+    margin: 5px 0;
+}
+
+.crypto-card p {
+    font-size: 16px;
+    margin: 5px 0;
+}
+
+.crypto-card h2 {
+    font-size: 28px;
+    margin: 10px 0;
+}
+.crypto-card .favorite-button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    position: relative;
+    color: #FFD700; /* Gold color for favorite */
+    top: 2%;
+    right: 15px;
+    font-size: 24px;
+    transition: color 0.3s ease-in-out, transform 0.3s ease-in-out;
+}
+
+.crypto-card .favorite-button .star-icon::before {
+    content: '☆'; /* Blank star icon */
+    font-size: 24px;
+}
+
+.crypto-card .favorite-button.favorited .star-icon::before {
+    content: '★'; /* Filled star icon */
+    color: #FFD700; /* Gold color for favorite */
+    transform: scale(1.2);
+}
+
+
+.price-change {
+    font-size: 14px;
+    margin-bottom: 15px;
+}
+
+.price-change.positive {
+    color: #00ff00;
+}
+
+.price-change.negative {
+    color: #ff0000;
+}
+
+.details-button {
+    background-color: #FFA500;
+    color: #121212;
+    border: none;
+    border-radius: 5px;
+    padding: 10px 20px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.3s;
+}
+
+.details-button:hover {
+    background-color: #ffcc00;
+}
+
 /* Form Container Styles */
 .form-container {
     background-color: #242424;
@@ -109,7 +189,7 @@ body {
     max-width: 400px;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
     text-align: center;
-    margin-top: 80px;
+    margin-top: -200px; /* Adjust form positioning */
 }
 
 .form-container h2 {
@@ -157,22 +237,12 @@ form button:hover {
     background-color: #e0a800;
 }
 
-.form-container {
-    background-color: #242424;
-    padding: 40px;
-    border-radius: 8px;
-    width: 100%;
-    max-width: 400px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
-    text-align: center;
-    margin-top: -200px; /* Burayı daha küçük yaparak formu üste taşıyın */
-}
-
+/* Notification Styles */
 .notification {
     position: fixed;
     top: 20px;
     right: 20px;
-    background-color: #4caf50; /* Green background for success */
+    background-color: #4caf50; /* Success background */
     color: white;
     padding: 15px;
     border-radius: 5px;
@@ -181,9 +251,51 @@ form button:hover {
 }
 
 .notification.hidden {
-    opacity: 0; /* Hide the notification */
+    opacity: 0; /* Hide notification */
 }
 
 .notification.show {
-    opacity: 1; /* Show the notification */
+    opacity: 1; /* Show notification */
 }
+
+/* Link Styles */
+a {
+    color: inherit; /* Inherit parent color */
+    text-decoration: none; /* Remove underline */
+}
+
+a:hover {
+    color: #ffffff; /* White color on hover */
+    text-decoration: none; /* Keep underline removed */
+}
+
+.signup-prompt {
+    margin-top: 20px; /* Adjust the value to move the link further down */
+    font-size: 14px;  /* Adjust the font size if needed */
+    text-align: center; /* Center the text if desired */
+}
+
+.signup-prompt a {
+    color: #ffbb00; /* Set the link color to #ffbb00 */
+    text-decoration: none; /* Remove underline */
+}
+
+.signup-prompt a:hover {
+    text-decoration: underline; /* Add underline on hover if desired */
+}
+
+.login-prompt {
+    margin-top: 20px; /* Add space above the text */
+    font-size: 14px; /* Adjust font size if necessary */
+    text-align: center; /* Center the text */
+}
+
+.login-prompt a {
+    color: #ffbb00; /* Set the link color to #ffbb00 */
+    text-decoration: none; /* Remove underline */
+}
+
+.login-prompt a:hover {
+    text-decoration: underline; /* Add underline on hover */
+}
+

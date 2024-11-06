@@ -3,7 +3,7 @@ import hashlib
 import sqlite3
 
 app = Flask(__name__)
-app.secret_key = 'super_secret_key'  # Güvenlik anahtarı (değiştirin)
+app.secret_key = 'cryptoapex_x'
 
 # Veritabanı bağlantısı
 def get_db_connection():
@@ -82,11 +82,12 @@ def login():
 
     return render_template('login.html', message=message)
 
+
 # Anasayfa
 @app.route('/', methods=['GET'])
 def index():
-    if 'user_id' not in session:
-        return redirect(url_for('login'))  # Kullanıcı giriş yapmamışsa giriş sayfasına yönlendir
+    #if 'user_id' not in session:
+        #return redirect(url_for('login'))
     return render_template('index.html')
 
 # Çıkış Yapma

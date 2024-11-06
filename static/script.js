@@ -37,3 +37,7 @@ window.onload = function() {
     panel.style.display = 'none'; // Sayfa yüklendiğinde panel gizli
     clearInputs();
 }
+
+function toggleFavorite(button) {
+    button.classList.toggle('favorited');
+}
