@@ -98,5 +98,7 @@ def logout():
     message = 'Çıkış yapıldı.'
     return render_template('login.html', message=message)
 
+
+# dasdasdasdas
 if __name__ == '__main__':
     app.run(debug=True)
