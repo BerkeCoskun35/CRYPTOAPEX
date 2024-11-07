@@ -99,7 +99,5 @@ def logout():
     return render_template('login.html', message=message)
 
 
-# dasdasdasdas
-# dawdawdaw
 if __name__ == '__main__':
     app.run(debug=True)
