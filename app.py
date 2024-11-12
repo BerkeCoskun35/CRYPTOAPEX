@@ -1,37 +1,22 @@
-from flask import Flask, render_template, request, redirect, url_for, session
+from flask import Flask, jsonify, render_template, request, session
 import hashlib
+from database import get_db_connection, create_database
 import sqlite3
+from api import start_price_updater  # api.py dosyasindan fiyat güncelleme fonksiyonunu içe aktariyoruz
+import threading
 
 app = Flask(__name__)
 app.secret_key = 'cryptoapex_x'
-
-# Veritabanı bağlantısı
-def get_db_connection():
-    conn = sqlite3.connect('cryptoapex.db')
-    conn.row_factory = sqlite3.Row
-    return conn
 
 def hash_password(password):
     sha256_hash = hashlib.sha256()
     sha256_hash.update(password.encode('utf-8'))
     return sha256_hash.hexdigest()
 
-# Veritabanını oluşturma
-def create_database():
-    conn = get_db_connection()
-    conn.execute('''
-        CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT UNIQUE NOT NULL,
-            email TEXT UNIQUE NOT NULL,
-            password TEXT NOT NULL
-        )
-    ''')
-    conn.close()
+# Veritabanini başlat
+with get_db_connection() as conn:
+    create_database(conn)
 
-create_database()
-
-# Kayıt Ol Sayfası
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     message = None
@@ -39,9 +24,8 @@ def register():
         username = request.form['username']
         email = request.form['email']
         password = request.form['password']
-        
         hashed_password = hash_password(password)
-        
+
         conn = get_db_connection()
         try:
             conn.execute(
@@ -49,10 +33,9 @@ def register():
                 (username, email, hashed_password)
             )
             conn.commit()
-            message = 'Kayıt başarılı! Artık giriş yapabilirsiniz.'
-            return render_template('register.html', message=message)
+            message = 'Kayit başarili! Artik giriş yapabilirsiniz.'
         except sqlite3.IntegrityError:
-            message = 'Bu kullanıcı adı veya e-posta zaten kayıtlı.'
+            message = 'Bu kullanici adi veya e-posta zaten kayitli.'
         finally:
             conn.close()
 
@@ -65,38 +48,54 @@ def login():
         username_or_email = request.form['username-email']
         password = request.form['password']
         hs_password = hash_password(password)
+
         conn = get_db_connection()
-        user = conn.execute('SELECT * FROM users WHERE username = ? OR email = ?', (username_or_email, username_or_email)).fetchone()
+        user = conn.execute('SELECT * FROM users WHERE username = ? OR email = ?', 
+                            (username_or_email, username_or_email)).fetchone()
         conn.close()
 
-        if user:
-            if hs_password == user["password"]:
-                session['user_id'] = user['id']
-                session['username'] = user['username']
-                message = 'Giriş başarılı!'
-                return render_template('index.html', message=message)
-            else:
-                message = 'Kullanıcı adı veya şifre hatalı.'
+        if user and hs_password == user["password"]:
+            session['user_id'] = user['id']
+            session['username'] = user['username']
+            message = 'Giriş başarili!'
+            return render_template('index.html', message=message)
         else:
-            message = 'Kullanıcı adı veya şifre hatalı.'
+            message = 'Kullanici adi veya şifre hatali.'
 
     return render_template('login.html', message=message)
 
+# Fiyatlari veritabanindan almak için bir yardimci fonksiyon
+def get_updated_prices():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT kripto_adi, guncel_fiyat FROM 'Kripto Para'")
+    prices = cursor.fetchall()
+    conn.close()
+    
+    # Prices dictionary
+    updated_prices = {row['kripto_adi']: f"{row['guncel_fiyat']} USD" for row in prices}
+    return updated_prices
 
-# Anasayfa
-@app.route('/', methods=['GET'])
+@app.route('/')
 def index():
-    #if 'user_id' not in session:
-        #return redirect(url_for('login'))
-    return render_template('index.html')
+    updated_prices = get_updated_prices()
+    return render_template('index.html', updated_prices=updated_prices)
 
-# Çıkış Yapma
+@app.route('/api/prices', methods=['GET'])
+def get_prices():
+    updated_prices = get_updated_prices()
+    return jsonify(updated_prices)
+
 @app.route('/logout')
 def logout():
     session.pop('user_id', None)
     session.pop('username', None)
-    message = 'Çıkış yapıldı.'
+    message = 'Çikiş yapildi.'
     return render_template('login.html', message=message)
+
+# Fiyat güncelleyiciyi ayri bir thread'de başlat
+price_updater_thread = threading.Thread(target=start_price_updater, daemon=True)
+price_updater_thread.start()
 
 if __name__ == '__main__':
     app.run(debug=True)
