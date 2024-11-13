@@ -41,13 +41,7 @@ def get_all_currency_rates():
     try_rates = {currency: usd_to_try_rate / rate for currency, rate in conversion_rates.items() if currency != "USD"}
     return try_rates
 
-def start_price_updater():
-    while True:
-        update_crypto_prices()
-        update_currency_prices()
-        time.sleep(30)
 
-        
 def update_crypto_prices():
     all_prices = get_all_crypto_prices() 
     if not all_prices:  
