@@ -58,7 +58,9 @@ def login():
             session['user_id'] = user['id']
             session['username'] = user['username']
             message = 'Giriş başarili!'
-            return render_template('index.html', message=message)
+
+            updated_prices = get_updated_prices()
+            return render_template('index.html', message=message, updated_prices=updated_prices)
         else:
             message = 'Kullanıcı adı veya şifresi hatalı.'
 
