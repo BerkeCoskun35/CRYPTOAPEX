@@ -33,7 +33,7 @@ def register():
                 (username, email, hashed_password)
             )
             conn.commit()
-            message = 'Kayıt başarılı! Artık gırış yapabilirsiniz.'
+            message = 'Kayıt başarılı! Artık giriş yapabilirsiniz.'
         except sqlite3.IntegrityError:
             message = 'Bu kullanıcı adı veya e-postası zaten kayıtlı.'
         finally:
