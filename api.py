@@ -107,7 +107,7 @@ def update_currency_prices():
     conn.commit()
     conn.close()
 
-
+def start_price_updater():
     update_count = 0
     while True:
         update_crypto_prices()
