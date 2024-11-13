@@ -1,4 +1,4 @@
-/* Global Styles */
+
 * {
     margin: 0;
     padding: 0;
@@ -15,13 +15,13 @@ body {
     align-items: center;
     justify-content: center;
     min-height: 100vh;
-    margin-top: 60px; /* Navbar yüksekliği kadar üst boşluk bırak */
+    margin-top: 60px; 
 }
 
-/* Navbar Styles */
+
 .navbar {
     width: 100%;
-    height: 60px; /* Sabit yükseklik */
+    height: 60px;
     background-color: #ffae00;
     display: flex;
     justify-content: space-between;
@@ -34,7 +34,7 @@ body {
 }
 
 .navbar-logo {
-    font-size: 24px; /* Sabit font boyutu */
+    font-size: 24px; 
     font-weight: bold;
     color: white;
     text-decoration: none;
@@ -61,7 +61,7 @@ body {
     height: 30px;
 }
 
-/* Notification Panel Styles */
+
 .notification-panel {
     display: none;
     position: absolute;
@@ -90,7 +90,7 @@ body {
     background-color: #333;
 }
 
-/* Crypto Cards Styles */
+
 .crypto-cards {
     display: flex;
     flex-wrap: wrap;
@@ -133,7 +133,7 @@ body {
     border: none;
     cursor: pointer;
     position: relative;
-    color: #FFD700; /* Gold color for favorite */
+    color: #FFD700; 
     top: 2%;
     right: 15px;
     font-size: 24px;
@@ -141,13 +141,13 @@ body {
 }
 
 .crypto-card .favorite-button .star-icon::before {
-    content: '☆'; /* Blank star icon */
+    content: '☆'; 
     font-size: 24px;
 }
 
 .crypto-card .favorite-button.favorited .star-icon::before {
-    content: '★'; /* Filled star icon */
-    color: #FFD700; /* Gold color for favorite */
+    content: '★'; 
+    color: #FFD700; 
     transform: scale(1.2);
 }
 
@@ -180,7 +180,7 @@ body {
     background-color: #ffcc00;
 }
 
-/* Form Container Styles */
+
 .form-container {
     background-color: #242424;
     padding: 40px;
@@ -189,7 +189,7 @@ body {
     max-width: 400px;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
     text-align: center;
-    margin-top: -200px; /* Adjust form positioning */
+    margin-top: -200px; 
 }
 
 .form-container h2 {
@@ -237,12 +237,12 @@ form button:hover {
     background-color: #e0a800;
 }
 
-/* Notification Styles */
+
 .notification {
     position: fixed;
     top: 20px;
     right: 20px;
-    background-color: #4caf50; /* Success background */
+    background-color: #4caf50; 
     color: white;
     padding: 15px;
     border-radius: 5px;
@@ -251,51 +251,51 @@ form button:hover {
 }
 
 .notification.hidden {
-    opacity: 0; /* Hide notification */
+    opacity: 0; 
 }
 
 .notification.show {
-    opacity: 1; /* Show notification */
+    opacity: 1; 
 }
 
-/* Link Styles */
+
 a {
-    color: inherit; /* Inherit parent color */
-    text-decoration: none; /* Remove underline */
+    color: inherit;
+    text-decoration: none; 
 }
 
 a:hover {
-    color: #ffffff; /* White color on hover */
-    text-decoration: none; /* Keep underline removed */
+    color: #ffffff; 
+    text-decoration: none; 
 }
 
 .signup-prompt {
-    margin-top: 20px; /* Adjust the value to move the link further down */
-    font-size: 14px;  /* Adjust the font size if needed */
-    text-align: center; /* Center the text if desired */
+    margin-top: 20px; 
+    font-size: 14px;  
+    text-align: center; 
 }
 
 .signup-prompt a {
-    color: #ffbb00; /* Set the link color to #ffbb00 */
-    text-decoration: none; /* Remove underline */
+    color: #ffbb00; 
+    text-decoration: none; 
 }
 
 .signup-prompt a:hover {
-    text-decoration: underline; /* Add underline on hover if desired */
+    text-decoration: underline; 
 }
 
 .login-prompt {
-    margin-top: 20px; /* Add space above the text */
-    font-size: 14px; /* Adjust font size if necessary */
-    text-align: center; /* Center the text */
+    margin-top: 20px; 
+    font-size: 14px; 
+    text-align: center; 
 }
 
 .login-prompt a {
-    color: #ffbb00; /* Set the link color to #ffbb00 */
-    text-decoration: none; /* Remove underline */
+    color: #ffbb00; 
+    text-decoration: none; 
 }
 
 .login-prompt a:hover {
-    text-decoration: underline; /* Add underline on hover */
+    text-decoration: underline;
 }
 

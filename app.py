@@ -2,7 +2,7 @@ from flask import Flask, jsonify, render_template, request, session
 import hashlib
 from database import get_db_connection, create_database
 import sqlite3
-from api import start_price_updater  # api.py dosyasindan fiyat güncelleme fonksiyonunu içe aktariyoruz
+from api import start_price_updater  
 import threading
 
 app = Flask(__name__)
@@ -13,7 +13,7 @@ def hash_password(password):
     sha256_hash.update(password.encode('utf-8'))
     return sha256_hash.hexdigest()
 
-# Veritabanini başlat
+
 with get_db_connection() as conn:
     create_database(conn)
 
@@ -64,16 +64,18 @@ def login():
 
     return render_template('login.html', message=message)
 
-# Fiyatlari veritabanindan almak için bir yardimci fonksiyon
+
 def get_updated_prices():
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT kripto_adi, guncel_fiyat FROM 'Kripto Para'")
+
+  
+    cursor.execute("SELECT kripto_adi, guncel_fiyat FROM 'Kripto Para' WHERE kripto_adi IN ('BTC', 'ETH', 'SOL')")
     prices = cursor.fetchall()
     conn.close()
     
-    # Prices dictionary
-    updated_prices = {row['kripto_adi']: f"{row['guncel_fiyat']} USD" for row in prices}
+    
+    updated_prices = {row['kripto_adi']: f"{row['guncel_fiyat']}" for row in prices}
     return updated_prices
 
 @app.route('/')
@@ -93,7 +95,7 @@ def logout():
     message = 'Çikiş yapildi.'
     return render_template('login.html', message=message)
 
-# Fiyat güncelleyiciyi ayri bir thread'de başlat
+
 price_updater_thread = threading.Thread(target=start_price_updater, daemon=True)
 price_updater_thread.start()
 

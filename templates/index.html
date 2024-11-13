@@ -16,7 +16,6 @@
             </button>
             {% endif %}
             <button>
-            <button>
                 <a href="/register">
                     <img src="static/images/profile.png" alt="Profil">
                 </a>
@@ -30,33 +29,38 @@
     </div>
 
     <div class="crypto-cards">
+       
         <div class="crypto-card">
             <img src="https://upload.wikimedia.org/wikipedia/commons/4/46/Bitcoin.svg" alt="Bitcoin">
             <h3>BITCOIN</h3>
             <p>BTC</p>
-            <h2>68.857,99 USD</h2>
+            <h2>{{ updated_prices['BTC'] }} USD</h2> 
             <p class="price-change positive">+1.32% (+$896.96)</p>
             <button class="favorite-button" onclick="toggleFavorite(this)">
                 <a class="star-icon"></a>
             </button>
             <button class="details-button">More details</button>
         </div>
+
+        
         <div class="crypto-card">
             <img src="https://upload.wikimedia.org/wikipedia/commons/6/6f/Ethereum-icon-purple.svg" alt="Ethereum">
             <h3>ETHEREUM</h3>
             <p>ETH</p>
-            <h2>2.512,34 USD</h2>
+            <h2>{{ updated_prices['ETH'] }} USD</h2> 
             <p class="price-change positive">+0.25% (+$6.21)</p>
             <button class="favorite-button" onclick="toggleFavorite(this)">
                 <a class="star-icon"></a>
             </button>
             <button class="details-button">More details</button>
         </div>
+
+       
         <div class="crypto-card">
             <img src="https://upload.wikimedia.org/wikipedia/en/b/b9/Solana_logo.png" alt="Solana">
             <h3>SOLANA</h3>
             <p>SOL</p>
-            <h2>177,31 USD</h2>
+            <h2>{{ updated_prices['SOL'] }} USD</h2> 
             <p class="price-change negative">-0.75% (-$13.29)</p>
             <button class="favorite-button" onclick="toggleFavorite(this)">
                 <a class="star-icon"></a>
