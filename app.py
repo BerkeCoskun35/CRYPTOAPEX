@@ -2,7 +2,7 @@ from flask import Flask, jsonify, render_template, request, session
 import hashlib
 from database import get_db_connection, create_database
 import sqlite3
-from api import start_price_updater  
+from api import start_price_updater
 import threading
 
 app = Flask(__name__)
