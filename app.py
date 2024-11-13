@@ -33,9 +33,9 @@ def register():
                 (username, email, hashed_password)
             )
             conn.commit()
-            message = 'Kayit başarili! Artik giriş yapabilirsiniz.'
+            message = 'Kayıt başarılı! Artık gırış yapabilirsiniz.'
         except sqlite3.IntegrityError:
-            message = 'Bu kullanici adi veya e-posta zaten kayitli.'
+            message = 'Bu kullanıcı adı veya e-postası zaten kayıtlı.'
         finally:
             conn.close()
 
@@ -60,7 +60,7 @@ def login():
             message = 'Giriş başarili!'
             return render_template('index.html', message=message)
         else:
-            message = 'Kullanici adi veya şifre hatali.'
+            message = 'Kullanıcı adı veya şifresi hatalı.'
 
     return render_template('login.html', message=message)
 
@@ -92,7 +92,7 @@ def get_prices():
 def logout():
     session.pop('user_id', None)
     session.pop('username', None)
-    message = 'Çikiş yapildi.'
+    message = 'Çıkış yapıldı.'
     return render_template('login.html', message=message)
 
 
