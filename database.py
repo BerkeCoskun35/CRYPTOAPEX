@@ -1,30 +1,19 @@
-import sqlite3
+from pymongo import MongoClient
 
+# MongoDB bağlantısını kuran fonksiyon
 def get_db_connection():
-    conn = sqlite3.connect('cryptoapex.db') 
-    conn.row_factory = sqlite3.Row 
-    return conn
+    client = MongoClient('mongodb://localhost:27017/')  # MongoDB'nin çalıştığı adres
+    db = client['json_to_mongo']  # Veritabanı adı
+    return db
 
-def create_database(conn):
-    conn.execute('''
-        CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT UNIQUE NOT NULL,
-            email TEXT UNIQUE NOT NULL,
-            password TEXT NOT NULL
-        )
-    ''')
-    conn.commit() 
+# Veritabanından kullanıcıları okuma
+def select_in(db):
+    users = db['users']
+    for user in users.find():  # Tüm kullanıcıları al
+        print(user)
 
-def select_in(conn):
-    output = conn.execute('''
-        SELECT * FROM users
-    ''')
-    rows = output.fetchall() 
-    for row in rows:
-        print(dict(row))  
+# MongoDB bağlantısı alınıyor ve işlemler yapılıyor
+db = get_db_connection()
+select_in(db)
 
-conn = get_db_connection()
-create_database(conn)
-select_in(conn)
-conn.close()  
+

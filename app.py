@@ -1,7 +1,6 @@
 from flask import Flask, jsonify, render_template, request, session
 import hashlib
-from database import get_db_connection, create_database
-import sqlite3
+from database import get_db_connection
 from api import start_price_updater
 import threading
 
@@ -13,10 +12,6 @@ def hash_password(password):
     sha256_hash.update(password.encode('utf-8'))
     return sha256_hash.hexdigest()
 
-
-with get_db_connection() as conn:
-    create_database(conn)
-
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     message = None
@@ -26,18 +21,17 @@ def register():
         password = request.form['password']
         hashed_password = hash_password(password)
 
-        conn = get_db_connection()
+        db = get_db_connection()
+        users = db['users']
         try:
-            conn.execute(
-                'INSERT INTO users (username, email, password) VALUES (?, ?, ?)',
-                (username, email, hashed_password)
-            )
-            conn.commit()
+            users.insert_one({
+                'username': username,
+                'email': email,
+                'password': hashed_password
+            })
             message = 'Kayıt başarılı! Artık giriş yapabilirsiniz.'
-        except sqlite3.IntegrityError:
+        except Exception as e:
             message = 'Bu kullanıcı adı veya e-postası zaten kayıtlı.'
-        finally:
-            conn.close()
 
     return render_template('register.html', message=message)
 
@@ -45,39 +39,55 @@ def register():
 def login():
     message = None
     if request.method == 'POST':
-        username_or_email = request.form['username-email']
-        password = request.form['password']
+        username_or_email = request.form.get('username-email')
+        password = request.form.get('password')
         hs_password = hash_password(password)
 
-        conn = get_db_connection()
-        user = conn.execute('SELECT * FROM users WHERE username = ? OR email = ?', 
-                            (username_or_email, username_or_email)).fetchone()
-        conn.close()
+        # MongoDB bağlantısı
+        db = get_db_connection()
+        users = db['users']
+        
+        # Kullanıcıyı sorgula
+        user = users.find_one({'$or': [{'username': username_or_email}, {'email': username_or_email}]})
+        
+        # Kullanıcı doğrulama
+        if user:
+            if user.get('password') == hs_password:
+                session['user_id'] = str(user['_id'])
+                session['username'] = user['username']
+                message = 'Giriş başarılı!'
+            else:
+                message = 'Şifre hatalı.'
+        else:
+            message = 'Kullanıcı adı veya e-posta bulunamadı.'
 
-        if user and hs_password == user["password"]:
-            session['user_id'] = user['id']
-            session['username'] = user['username']
-            message = 'Giriş başarili!'
-
+        if message == 'Giriş başarılı!':
             updated_prices = get_updated_prices()
             return render_template('index.html', message=message, updated_prices=updated_prices)
-        else:
-            message = 'Kullanıcı adı veya şifresi hatalı.'
 
     return render_template('login.html', message=message)
 
 
 def get_updated_prices():
-    conn = get_db_connection()
-    cursor = conn.cursor()
+    db = get_db_connection()
+    crypto_collection = db['Kripto Para']
+    currency_collection = db['Döviz']
 
-  
-    cursor.execute("SELECT kripto_adi, guncel_fiyat FROM 'Kripto Para' WHERE kripto_adi IN ('BTC', 'ETH', 'SOL')")
-    prices = cursor.fetchall()
-    conn.close()
-    
-    
-    updated_prices = {row['kripto_adi']: f"{row['guncel_fiyat']}" for row in prices}
+    # Kripto ve döviz fiyatlarını alın
+    crypto_prices = list(crypto_collection.find())
+    currency_prices = list(currency_collection.find())
+
+    # Kripto fiyatlarını düzenle
+    updated_crypto_prices = {
+        price['kripto_adi']: f"{price['guncel_fiyat']}" for price in crypto_prices
+    }
+    # Döviz fiyatlarını düzenle
+    updated_currency_prices = {
+        price['döviz_adi']: f"{price['guncel_fiyat']}" for price in currency_prices
+    }
+
+    # İki fiyat listesini birleştir
+    updated_prices = {**updated_crypto_prices, **updated_currency_prices}
     return updated_prices
 
 @app.route('/')
@@ -96,7 +106,6 @@ def logout():
     session.pop('username', None)
     message = 'Çıkış yapıldı.'
     return render_template('login.html', message=message)
-
 
 price_updater_thread = threading.Thread(target=start_price_updater, daemon=True)
 price_updater_thread.start()
