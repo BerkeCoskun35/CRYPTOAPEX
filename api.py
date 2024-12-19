@@ -1,10 +1,14 @@
 import requests
 import time
-from database import get_db_connection
+from database import get_db_connection  # Veritabanı bağlantısı
 
-EXCHANGERATE_API_KEY = "6c1ce89d793965170ed70274"
+# ExchangeRate API anahtarı
+EXCHANGERATE_API_KEY = "ae3a1b4145458a01849153bf"
 
 def get_all_crypto_prices():
+    """
+    Binance API'den kripto para fiyatlarını çeker.
+    """
     url = "https://api.binance.com/api/v3/ticker/price"
     response = requests.get(url)
     if response.status_code != 200:
@@ -15,28 +19,23 @@ def get_all_crypto_prices():
     return {item["symbol"]: float(item["price"]) for item in data}
 
 def get_all_currency_rates():
-    url = f"https://v6.exchangerate-api.com/v6/{EXCHANGERATE_API_KEY}/latest/USD"
+    """
+    ExchangeRate API'den döviz fiyatlarını çeker.
+    """
+    url = f"https://v6.exchangerate-api.com/v6/{EXCHANGERATE_API_KEY}/latest/TRY"
     response = requests.get(url)
     if response.status_code != 200:
         print("ExchangeRate API isteği başarısız oldu:", response.status_code, response.text)
         return {}
     
     data = response.json()
-    if "conversion_rates" not in data:
-        print("ExchangeRate API yanıtı beklenen formatta değil:", data)
-        return {}
-    
-    conversion_rates = data["conversion_rates"]
-
-    usd_to_try_rate = conversion_rates.get("TRY")
-    if not usd_to_try_rate:
-        print("TRY kur bilgisi bulunamadı.")
-        return {}
-
-    try_rates = {currency: usd_to_try_rate / rate for currency, rate in conversion_rates.items() if currency != "USD"}
-    return try_rates
+    rates = data.get("conversion_rates", {})
+    return rates
 
 def update_crypto_prices():
+    """
+    Veritabanındaki kripto para fiyatlarını Binance API'den güncelleyerek günceller.
+    """
     all_prices = get_all_crypto_prices()
     if not all_prices:
         print("Kripto fiyatları alınamadı.")
@@ -59,6 +58,9 @@ def update_crypto_prices():
             print(f"{coin_symbol} fiyatı güncellendi: {current_price}")
 
 def update_currency_prices():
+    """
+    Veritabanındaki döviz fiyatlarını ExchangeRate API'den güncelleyerek günceller.
+    """
     all_rates = get_all_currency_rates()
     if not all_rates:
         print("Döviz kurları alınamadı.")
@@ -71,16 +73,19 @@ def update_currency_prices():
     for currency in currencies:
         currency_name = currency["döviz_adi"]
         if currency_name in all_rates:
-            current_price_in_tl = all_rates[currency_name]
+            current_price_in_try = all_rates[currency_name]
             current_time = time.strftime('%Y-%m-%d %H:%M:%S')
 
             currency_collection.update_one(
                 {'_id': currency['_id']},
-                {'$set': {'guncel_fiyat': current_price_in_tl, 'guncellenme_zamani': current_time}}
+                {'$set': {'guncel_fiyat': current_price_in_try, 'guncellenme_zamani': current_time}}
             )
-            print(f"{currency_name} fiyatı (1 birim kaç TL): {current_price_in_tl}")
+            print(f"{currency_name} fiyatı (1 birim kaç TL): {current_price_in_try}")
 
 def save_prices_to_history():
+    """
+    Kripto ve döviz fiyatlarını geçmiş koleksiyonlara kaydeder.
+    """
     db = get_db_connection()
     crypto_collection = db['Kripto Para']
     crypto_history = db['Kripto_Gecmis']
@@ -105,6 +110,9 @@ def save_prices_to_history():
     print("Fiyatlar geçmiş tablolara kaydedildi.")
 
 def start_price_updater():
+    """
+    Kripto ve döviz fiyatlarını düzenli olarak günceller ve geçmiş kaydeder.
+    """
     update_count = 0
     while True:
         update_crypto_prices()
@@ -114,4 +122,8 @@ def start_price_updater():
         if update_count % 2 == 0:
             save_prices_to_history()
 
-        time.sleep(30)
+        time.sleep(30)  # 30 saniyede bir fiyat güncellemesi
+
+# Kullanım
+if __name__ == "__main__":
+    start_price_updater()
