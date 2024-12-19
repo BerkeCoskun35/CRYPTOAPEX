@@ -43,14 +43,10 @@ def login():
         password = request.form.get('password')
         hs_password = hash_password(password)
 
-        # MongoDB bağlantısı
         db = get_db_connection()
         users = db['users']
-        
-        # Kullanıcıyı sorgula
         user = users.find_one({'$or': [{'username': username_or_email}, {'email': username_or_email}]})
-        
-        # Kullanıcı doğrulama
+
         if user:
             if user.get('password') == hs_password:
                 session['user_id'] = str(user['_id'])
@@ -67,33 +63,27 @@ def login():
 
     return render_template('login.html', message=message)
 
-
 def get_updated_prices():
     db = get_db_connection()
     crypto_collection = db['Kripto Para']
     currency_collection = db['Döviz']
 
-    # Kripto ve döviz fiyatlarını alın
     crypto_prices = list(crypto_collection.find())
     currency_prices = list(currency_collection.find())
 
-    # Kripto fiyatlarını düzenle
     updated_crypto_prices = {
         price['kripto_adi']: f"{price['guncel_fiyat']}" for price in crypto_prices
     }
-    # Döviz fiyatlarını düzenle
     updated_currency_prices = {
         price['döviz_adi']: f"{price['guncel_fiyat']}" for price in currency_prices
     }
 
-    # İki fiyat listesini birleştir
     updated_prices = {**updated_crypto_prices, **updated_currency_prices}
     return updated_prices
 
 @app.route('/')
 def index():
-    updated_prices = get_updated_prices()
-    return render_template('index.html', updated_prices=updated_prices)
+    return render_template('index.html')
 
 @app.route('/api/prices', methods=['GET'])
 def get_prices():
