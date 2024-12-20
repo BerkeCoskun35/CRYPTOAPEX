@@ -1,114 +1,212 @@
-from flask import Flask, jsonify, render_template, request, session
-import hashlib
-from database import get_db_connection
-from api import start_price_updater
-import threading
+import requests
+import time
+from database import get_db_connection  # Veritabanı bağlantısı
 
-app = Flask(__name__)
-app.secret_key = 'cryptoapex_x'
+# ExchangeRate API anahtarı
+EXCHANGERATE_API_KEY = "ae3a1b4145458a01849153bf"
 
-def hash_password(password):
-    sha256_hash = hashlib.sha256()
-    sha256_hash.update(password.encode('utf-8'))
-    return sha256_hash.hexdigest()
+def get_all_crypto_prices():
+    """
+    Binance API'den kripto para fiyatlarını çeker.
+    """
+    url = "https://api.binance.com/api/v3/ticker/price"
+    response = requests.get(url)
+    if response.status_code != 200: 
+        print("Binance API isteği başarısız oldu:", response.status_code, response.text)
+        return {}
+    
+    data = response.json()
+    return {item["symbol"]: float(item["price"]) for item in data}
 
-@app.route('/register', methods=['GET', 'POST'])
-def register():
-    message = None
-    if request.method == 'POST':
-        username = request.form['username']
-        email = request.form['email']
-        password = request.form['password']
-        hashed_password = hash_password(password)
+def get_all_currency_rates():
+    """
+    ExchangeRate API'den döviz fiyatlarını çeker.
+    Döviz oranları 1 birimin kaç TL olduğunu gösterecek şekilde ayarlanır.
+    """
+    url = f"https://v6.exchangerate-api.com/v6/{EXCHANGERATE_API_KEY}/latest/TRY"
+    response = requests.get(url)
+    if response.status_code != 200:
+        print("ExchangeRate API isteği başarısız oldu:", response.status_code, response.text)
+        return {}
+    
+    data = response.json()
+    rates = data.get("conversion_rates", {})
+    
+    # 1 birimin kaç TL olduğunu hesaplar (TL'ye bölerek tersine çevirir)
+    try:
+        tl_rate = rates["TRY"]
+    except KeyError:
+        print("TRY oranı bulunamadı.")
+        return {}
 
-        db = get_db_connection()
-        users = db['users']
-        try:
-            users.insert_one({
-                'username': username,
-                'email': email,
-                'password': hashed_password
-            })
-            message = 'Kayıt başarılı! Artık giriş yapabilirsiniz.'
-        except Exception as e:
-            message = 'Bu kullanıcı adı veya e-postası zaten kayıtlı.'
+    return {currency: round(1 / rate, 5) for currency, rate in rates.items() if rate > 0}
 
-    return render_template('register.html', message=message)
-
-@app.route('/login', methods=['GET', 'POST'])
-def login():
-    message = None
-    if request.method == 'POST':
-        username_or_email = request.form.get('username-email')
-        password = request.form.get('password')
-        hs_password = hash_password(password)
-
-        # MongoDB bağlantısı
-        db = get_db_connection()
-        users = db['users']
-        
-        # Kullanıcıyı sorgula
-        user = users.find_one({'$or': [{'username': username_or_email}, {'email': username_or_email}]})
-        
-        # Kullanıcı doğrulama
-        if user:
-            if user.get('password') == hs_password:
-                session['user_id'] = str(user['_id'])
-                session['username'] = user['username']
-                message = 'Giriş başarılı!'
-            else:
-                message = 'Şifre hatalı.'
-        else:
-            message = 'Kullanıcı adı veya e-posta bulunamadı.'
-
-        if message == 'Giriş başarılı!':
-            updated_prices = get_updated_prices()
-            return render_template('index.html', message=message, updated_prices=updated_prices)
-
-    return render_template('login.html', message=message)
-
-
-def get_updated_prices():
+def update_crypto_prices():
+    """
+    Veritabanındaki kripto para fiyatlarını Binance API'den güncelleyerek günceller.
+    """
+    all_prices = get_all_crypto_prices()
+    if not all_prices:
+        print("Kripto fiyatları alınamadı.")
+        return
+    
     db = get_db_connection()
     crypto_collection = db['Kripto Para']
+
+    coins = list(crypto_collection.find())
+    for coin in coins:
+        coin_symbol = coin["kripto_adi"] + "USDT"
+        if coin_symbol in all_prices:
+            try:
+                current_price = round(float(all_prices[coin_symbol]), 5)  # Fiyatı 5 basamakla sınırla
+            except (ValueError, TypeError):
+                print(f"{coin_symbol} için fiyat yuvarlanamadı.")
+                continue
+
+            current_time = time.strftime('%Y-%m-%d %H:%M:%S')
+
+            crypto_collection.update_one(
+                {'_id': coin['_id']},
+                {'$set': {'guncel_fiyat': current_price, 'guncellenme_zamani': current_time}}
+            )
+            print(f"{coin_symbol} fiyatı güncellendi: {current_price}")
+
+def update_currency_prices():
+    """
+    Veritabanındaki döviz fiyatlarını ExchangeRate API'den güncelleyerek günceller.
+    Döviz fiyatlarını 1 birimin kaç TL olduğunu gösterecek şekilde günceller.
+    """
+    all_rates = get_all_currency_rates()
+    if not all_rates:
+        print("Döviz kurları alınamadı.")
+        return
+    
+    db = get_db_connection()
     currency_collection = db['Döviz']
 
-    # Kripto ve döviz fiyatlarını alın
-    crypto_prices = list(crypto_collection.find())
-    currency_prices = list(currency_collection.find())
+    currencies = list(currency_collection.find())
+    for currency in currencies:
+        currency_name = currency["döviz_adi"]
+        if currency_name in all_rates:
+            try:
+                current_price_in_try = all_rates[currency_name]
+            except (ValueError, TypeError):
+                print(f"{currency_name} için fiyat hesaplanamadı.")
+                continue
 
-    # Kripto fiyatlarını düzenle
-    updated_crypto_prices = {
-        price['kripto_adi']: f"{price['guncel_fiyat']}" for price in crypto_prices
+            current_time = time.strftime('%Y-%m-%d %H:%M:%S')
+
+            currency_collection.update_one(
+                {'_id': currency['_id']},
+                {'$set': {'guncel_fiyat': current_price_in_try, 'guncellenme_zamani': current_time}}
+            )
+            print(f"{currency_name} fiyatı (1 {currency_name} kaç TL): {current_price_in_try}")
+
+    """
+    Kripto ve döviz fiyatlarının son 24 saatlik yüzdelik değişimini hesaplar.
+    """
+    db = get_db_connection()
+    crypto_collection = db['Kripto Para']
+    crypto_history = db['Kripto_Gecmis']
+    currency_collection = db['Döviz']
+    currency_history = db['Döviz_Gecmis']
+
+    # Sonuçları tutacak dictionary
+    percentage_changes = {
+        'kripto': {},
+        'doviz': {}
     }
-    # Döviz fiyatlarını düzenle
-    updated_currency_prices = {
-        price['döviz_adi']: f"{price['guncel_fiyat']}" for price in currency_prices
-    }
 
-    # İki fiyat listesini birleştir
-    updated_prices = {**updated_crypto_prices, **updated_currency_prices}
-    return updated_prices
+    # Kripto paralar için yüzdelik değişim hesaplama
+    for coin in crypto_collection.find():
+        # Geçmişteki fiyatları al
+        past_prices = list(crypto_history.find(
+            {'kripto_id': coin['_id'], 'tarih': {'$gte': time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(time.time() - 86400))}}
+        ).sort('tarih', 1))
 
-@app.route('/')
-def index():
-    updated_prices = get_updated_prices()
-    return render_template('index.html', updated_prices=updated_prices)
+        if not past_prices:
+            continue
 
-@app.route('/api/prices', methods=['GET'])
-def get_prices():
-    updated_prices = get_updated_prices()
-    return jsonify(updated_prices)
+        initial_price = past_prices[0]['fiyat']
+        current_price = coin['guncel_fiyat']
 
-@app.route('/logout')
-def logout():
-    session.pop('user_id', None)
-    session.pop('username', None)
-    message = 'Çıkış yapıldı.'
-    return render_template('login.html', message=message)
+        # Yüzdelik değişim hesapla
+        try:
+            percentage_change = round(((current_price - initial_price) / initial_price) * 100, 2)
+        except ZeroDivisionError:
+            percentage_change = 0.0
 
-price_updater_thread = threading.Thread(target=start_price_updater, daemon=True)
-price_updater_thread.start()
+        # Sonuçları kaydet
+        percentage_changes['kripto'][coin['kripto_adi']] = percentage_change
 
-if __name__ == '__main__':
-    app.run(debug=False)
+    # Dövizler için yüzdelik değişim hesaplama
+    for currency in currency_collection.find():
+        # Geçmişteki fiyatları al
+        past_prices = list(currency_history.find(
+            {'döviz_id': currency['_id'], 'tarih': {'$gte': time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(time.time() - 86400))}}
+        ).sort('tarih', 1))
+
+        if not past_prices:
+            continue
+
+        initial_price = past_prices[0]['fiyat']
+        current_price = currency['guncel_fiyat']
+
+        # Yüzdelik değişim hesapla
+        try:
+            percentage_change = round(((current_price - initial_price) / initial_price) * 100, 2)
+        except ZeroDivisionError:
+            percentage_change = 0.0
+
+        # Sonuçları kaydet
+        percentage_changes['doviz'][currency['döviz_adi']] = percentage_change
+
+    print(percentage_changes)
+    return percentage_changes
+
+
+def save_prices_to_history():
+    """
+    Kripto ve döviz fiyatlarını geçmiş koleksiyonlara kaydeder.
+    """
+    db = get_db_connection()
+    crypto_collection = db['Kripto Para']
+    crypto_history = db['Kripto_Gecmis']
+
+    for coin in crypto_collection.find():
+        crypto_history.insert_one({
+            'kripto_id': coin['_id'],
+            'fiyat': coin['guncel_fiyat'],
+            'tarih': time.strftime('%Y-%m-%d %H:%M:%S')
+        })
+
+    currency_collection = db['Döviz']
+    currency_history = db['Döviz_Gecmis']
+
+    for currency in currency_collection.find():
+        currency_history.insert_one({
+            'döviz_id': currency['_id'],
+            'fiyat': currency['guncel_fiyat'],
+            'tarih': time.strftime('%Y-%m-%d %H:%M:%S')
+        })
+
+    print("Fiyatlar geçmiş tablolara kaydedildi.")
+
+def start_price_updater():
+    """
+    Kripto ve döviz fiyatlarını düzenli olarak günceller ve geçmiş kaydeder.
+    """
+    update_count = 0
+    while True:
+        update_crypto_prices()
+        update_currency_prices()
+        update_count += 1
+
+        if update_count % 2 == 0:
+            save_prices_to_history()
+
+        time.sleep(30)  # 30 saniyede bir fiyat güncellemesi
+
+# Kullanım
+if __name__ == "__main__":
+    start_price_updater()
