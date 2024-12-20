@@ -1,10 +1,11 @@
-
+/* Global Reset */
 * {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
 }
 
+/* Body Styling */
 body {
     margin: 0;
     font-family: Arial, sans-serif;
@@ -18,7 +19,7 @@ body {
     margin-top: 60px; 
 }
 
-
+/* Navbar Styling */
 .navbar {
     width: 100%;
     height: 60px;
@@ -61,7 +62,7 @@ body {
     height: 30px;
 }
 
-
+/* Notification Panel */
 .notification-panel {
     display: none;
     position: absolute;
@@ -90,15 +91,18 @@ body {
     background-color: #333;
 }
 
-
-.crypto-cards {
+/* Crypto and Currency Cards Styling */
+.crypto-cards, .currency-cards {
     display: flex;
     flex-wrap: wrap;
-    justify-content: space-around;
+    gap: 20px;
+    justify-content: center;
     padding: 20px;
+    margin: 0 auto;
 }
 
-.crypto-card {
+/* Card Styling */
+.crypto-card, .currency-card {
     background-color: #1c1c1c;
     border-radius: 10px;
     width: 300px;
@@ -108,50 +112,29 @@ body {
     box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
 }
 
-.crypto-card img {
+.crypto-card img, .currency-card img {
     width: 50px;
-    margin-bottom: 10px;
-    left: 0%;
+    height: 50px;
+    margin-bottom: 15px;
+    border-radius: 50%;
 }
 
-.crypto-card h3 {
+.crypto-card h3, .currency-card h3 {
     font-size: 24px;
     margin: 5px 0;
 }
 
-.crypto-card p {
+.crypto-card p, .currency-card p {
     font-size: 16px;
     margin: 5px 0;
 }
 
-.crypto-card h2 {
+.crypto-card h2, .currency-card h2 {
     font-size: 28px;
     margin: 10px 0;
 }
-.crypto-card .favorite-button {
-    background: none;
-    border: none;
-    cursor: pointer;
-    position: relative;
-    color: #FFD700; 
-    top: 2%;
-    right: 15px;
-    font-size: 24px;
-    transition: color 0.3s ease-in-out, transform 0.3s ease-in-out;
-}
 
-.crypto-card .favorite-button .star-icon::before {
-    content: '☆'; 
-    font-size: 24px;
-}
-
-.crypto-card .favorite-button.favorited .star-icon::before {
-    content: '★'; 
-    color: #FFD700; 
-    transform: scale(1.2);
-}
-
-
+/* Price Change Styling */
 .price-change {
     font-size: 14px;
     margin-bottom: 15px;
@@ -165,22 +148,45 @@ body {
     color: #ff0000;
 }
 
-.details-button {
-    background-color: #FFA500;
-    color: #1f1f1f;
+/* Button Styling */
+.favorite-button, .details-button {
+    background-color: transparent;
     border: none;
-    border-radius: 5px; 
-    padding: 10px 20px;
+    padding: 10px;
+    margin-top: 10px;
+    border-radius: 5px;
     cursor: pointer;
-    font-size: 14px;
-    transition: background-color 0.3s;
 }
 
-.details-button:hover {
-    background-color: #ffcc00;
+.details-button {
+    background-color: #ffae00;
+}
+.details-button a:hover{
+    background-color: #c48602;
+    color: #ffffff
+}
+
+.favorite-button .star-icon {
+    font-size: 24px;
+}
+
+/* Favorite Button Star Effect */
+.crypto-card .favorite-button .star-icon::before, 
+.currency-card .favorite-button .star-icon::before {
+    content: '☆'; 
+    color: #ffae00; 
+    font-size: 24px;
+}
+
+.crypto-card .favorite-button.favorited .star-icon::before,
+.currency-card .favorite-button.favorited .star-icon::before {
+    content: '★'; 
+    color: #ffae00; 
+    transform: scale(1.2);
 }
 
 
+/* Form Container */
 .form-container {
     background-color: #242424;
     padding: 40px;
@@ -233,11 +239,8 @@ form button {
     transition: background-color 0.3s;
 }
 
-form button:hover {
-    background-color: #e0a800;
-}
 
-
+/* Notification */
 .notification {
     position: fixed;
     top: 20px;
@@ -258,7 +261,7 @@ form button:hover {
     opacity: 1; 
 }
 
-
+/* Links */
 a {
     color: inherit;
     text-decoration: none; 
@@ -269,6 +272,7 @@ a:hover {
     text-decoration: none; 
 }
 
+/* Signup Prompt */
 .signup-prompt {
     margin-top: 20px; 
     font-size: 14px;  
@@ -284,6 +288,7 @@ a:hover {
     text-decoration: underline; 
 }
 
+/* Login Prompt */
 .login-prompt {
     margin-top: 20px; 
     font-size: 14px; 
@@ -298,4 +303,3 @@ a:hover {
 .login-prompt a:hover {
     text-decoration: underline;
 }
-

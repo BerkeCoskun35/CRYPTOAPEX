@@ -62,42 +62,64 @@ def login():
             message = 'Kullanıcı adı veya e-posta bulunamadı.'
 
         if message == 'Giriş başarılı!':
-            updated_prices = get_updated_prices()
-            return render_template('index.html', message=message, updated_prices=updated_prices)
+            updated_crypto_prices = get_updated_crypto_prices()
+            updated_currency_prices = get_updated_currency_prices()
+            return render_template('index.html', message=message, 
+                                   updated_crypto_prices=updated_crypto_prices,
+                                   updated_currency_prices=updated_currency_prices)
 
     return render_template('login.html', message=message)
 
 
-def get_updated_prices():
+def get_updated_crypto_prices():
     db = get_db_connection()
     crypto_collection = db['Kripto Para']
+
+    # Kripto verilerini alfabetik sıralama ile al
+    crypto_prices = list(crypto_collection.find().sort('kripto_adi', 1))  # 1 = Artan sıralama (A-Z)
+
+    # Güncel fiyatları ve ikonları düzenle
+    updated_crypto_prices = [
+        {
+            'kripto_adi': item['kripto_adi'],
+            'kripto_icon': item['kripto_icon'],
+            'guncel_fiyat': item['guncel_fiyat']
+        } for item in crypto_prices
+    ]
+
+    return updated_crypto_prices
+
+def get_updated_currency_prices():
+    db = get_db_connection()
     currency_collection = db['Döviz']
 
-    # Kripto ve döviz fiyatlarını alın
-    crypto_prices = list(crypto_collection.find())
-    currency_prices = list(currency_collection.find())
+    # Döviz verilerini alfabetik sıralama ile al
+    currency_prices = list(currency_collection.find().sort('döviz_adi', 1))  # 1 = Artan sıralama (A-Z)
 
-    # Kripto fiyatlarını düzenle
-    updated_crypto_prices = {
-        price['kripto_adi']: f"{price['guncel_fiyat']}" for price in crypto_prices
-    }
-    # Döviz fiyatlarını düzenle
-    updated_currency_prices = {
-        price['döviz_adi']: f"{price['guncel_fiyat']}" for price in currency_prices
-    }
+    # Güncel fiyatları ve ikonları düzenle
+    updated_currency_prices = [
+        {
+            'döviz_adi': item['döviz_adi'],
+            'döviz_icon': item['döviz_icon'],
+            'guncel_fiyat': item['guncel_fiyat']
+        } for item in currency_prices
+    ]
 
-    # İki fiyat listesini birleştir
-    updated_prices = {**updated_crypto_prices, **updated_currency_prices}
-    return updated_prices
+    return updated_currency_prices
+
 
 @app.route('/')
 def index():
-    updated_prices = get_updated_prices()
-    return render_template('index.html', updated_prices=updated_prices)
+    updated_crypto_prices = get_updated_crypto_prices()
+    updated_currency_prices = get_updated_currency_prices()
+    return render_template('index.html', updated_crypto_prices=updated_crypto_prices, updated_currency_prices=updated_currency_prices)
+
+
+
 
 @app.route('/api/prices', methods=['GET'])
 def get_prices():
-    updated_prices = get_updated_prices()
+    updated_prices = get_updated_crypto_prices() + get_updated_currency_prices()  # Her iki tür fiyatları birleştiriyoruz
     return jsonify(updated_prices)
 
 @app.route('/logout')

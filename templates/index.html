@@ -28,51 +28,43 @@
         </div>
     </div>
 
-    <div class="crypto-cards" id="cryptoCards"></div>
+    <div class="cards-container">
+        <div class="crypto-cards">
+            {% for item in updated_crypto_prices %}
+            <div class="crypto-card">
+                <img src="{{ item['kripto_icon'] }}" alt="{{ item['kripto_adi'] }}">
+                <h3>{{ item['kripto_adi'] }}</h3>
+                <p>{{ item['kripto_kodu'] }}</p>
+                <h2>{{ item['guncel_fiyat'] }} USD</h2>
+                <p class="price-change positive">+0.25% (+$6.21)</p>
+                <button class="favorite-button" onclick="toggleFavorite(this)">
+                    <a class="star-icon"></a>
+                </button>
+                <button class="details-button">More details</button>
+            </div>
+            {% endfor %}
+        </div>
+    
+        <div class="currency-cards">
+            {% for item in updated_currency_prices %}
+            <div class="currency-card">
+                <img src="{{ item['döviz_icon'] }}" alt="{{ item['döviz_adi'] }}">
+                <h3>{{ item['döviz_adi'] }}</h3>
+                <p>{{ item['döviz_kodu'] }}</p>
+                <h2>{{ item['guncel_fiyat'] }} USD</h2>
+                <p class="price-change positive">+0.25% (+$6.21)</p>
+                <button class="favorite-button" onclick="toggleFavorite(this)">
+                    <a class="star-icon"></a>
+                </button>
+                <button class="details-button">More details</button>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    
+    
+      
 
-<style>
-    .crypto-cards {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 20px;
-    }
-    .crypto-card {
-        border: 1px solid #ccc;
-        padding: 20px;
-        border-radius: 8px;
-        width: 200px;
-        text-align: center;
-        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-    }
-</style>
-
-<script>
-    async function fetchUpdatedPrices() {
-        try {
-            const response = await fetch('/api/prices');
-            const updatedPrices = await response.json();
-            updateCryptoCards(updatedPrices);
-        } catch (error) {
-            console.error('Fiyatları çekerken hata oluştu:', error);
-        }
-    }
-
-    function updateCryptoCards(prices) {
-        const cryptoCardsContainer = document.getElementById('cryptoCards');
-        cryptoCardsContainer.innerHTML = '';
-
-        for (const [name, price] of Object.entries(prices)) {
-            const card = document.createElement('div');
-            card.className = 'crypto-card';
-            card.innerHTML = `
-                <h3>${name}</h3>
-                <h2>${price} USD</h2>
-            `;
-            cryptoCardsContainer.appendChild(card);
-        }
-    }
-
-    window.onload = fetchUpdatedPrices;
-</script>
+    <script src="static/script.js"></script>
 </body>
 </html>
