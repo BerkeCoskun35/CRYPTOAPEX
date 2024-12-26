@@ -39,5 +39,19 @@ window.onload = function() {
 }
 
 function toggleFavorite(button) {
-    button.classList.toggle('favorited');
+    // Kullanıcı giriş yapmış mı kontrol et
+    fetch('/api/check-login')
+        .then(response => response.json())
+        .then(data => {
+            if (data.isLoggedIn) {
+                // Kullanıcı giriş yapmışsa favoriyi ekle/kaldır
+                button.classList.toggle('favorited');
+            } else {
+                // Giriş yapılmamışsa login sayfasına yönlendir
+                window.location.href = '/login';
+            }
+        })
+        .catch(error => {
+            console.error('Login durumu kontrol edilirken bir hata oluştu:', error);
+        });
 }

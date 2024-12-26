@@ -122,6 +122,13 @@ def get_prices():
     updated_prices = get_updated_crypto_prices() + get_updated_currency_prices()  # Her iki tür fiyatları birleştiriyoruz
     return jsonify(updated_prices)
 
+@app.route('/api/check-login', methods=['GET'])
+def check_login():
+    if 'user_id' in session:
+        return jsonify({'isLoggedIn': True})
+    return jsonify({'isLoggedIn': False})
+
+
 @app.route('/logout')
 def logout():
     session.pop('user_id', None)
