@@ -1,196 +1,150 @@
 import streamlit as st
 import time
 import requests
+import logging
 from pymongo import MongoClient
-
-# MongoDB bağlantısını kuran fonksiyon
-def get_db_connection():
-    client = MongoClient('mongodb+srv://berkecoskun:Berke1035208@cluster0.ydrox.mongodb.net/')  # MongoDB'nin çalıştığı adres
-    db = client['CryptoApex']  # Veritabanı adı
-    return db
-
-# Veritabanından kullanıcıları okuma
-def select_in(db):
-    users = db['users']
-    for user in users.find():  # Tüm kullanıcıları al
-        print(user)
-
-# MongoDB bağlantısı alınıyor ve işlemler yapılıyor
-db = get_db_connection()
-select_in(db)
 
 EXCHANGERATE_API_KEY = "ae3a1b4145458a01849153bf"
 
+# Configure logging
+logging.basicConfig(
+    filename='cryptoapex.log', 
+    level=logging.INFO, 
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
+
+# MongoDB bağlantısını kuran fonksiyon
+def get_db_connection():
+    try:
+        client = MongoClient('mongodb+srv://berkecoskun:Berke1035208@cluster0.ydrox.mongodb.net/')  # MongoDB'nin çalıştığı adres
+        db = client['CryptoApex']  # Veritabanı adı
+        logging.info("MongoDB bağlantısı başarıyla kuruldu.")
+        return db
+    except Exception as e:
+        logging.error(f"MongoDB bağlantısı kurulamadı: {e}")
+        return None
+
+# Veritabanından kullanıcıları okuma
+def select_in(db):
+    try:
+        users = db['users']
+        for user in users.find():  # Tüm kullanıcıları al
+            logging.info(f"Kullanıcı bulundu: {user}")
+    except Exception as e:
+        logging.error(f"Veritabanından kullanıcı okuma başarısız: {e}")
+
+# API Verisi alma
 def get_all_crypto_prices():
-    """
-    Binance API'den kripto para fiyatlarını çeker.
-    """
     url = "https://api.binance.com/api/v3/ticker/price"
-    response = requests.get(url)
-    if response.status_code != 200: 
-        print("Binance API isteği başarısız oldu:", response.status_code, response.text)
+    try:
+        response = requests.get(url)
+        response.raise_for_status()
+        data = response.json()
+        logging.info("Kripto para fiyatları başarıyla alındı.")
+        return {item["symbol"]: float(item["price"]) for item in data}
+    except Exception as e:
+        logging.error(f"Binance API isteği başarısız oldu: {e}")
         return {}
-    
-    data = response.json()
-    return {item["symbol"]: float(item["price"]) for item in data}
 
 def get_all_currency_rates():
-    """
-    ExchangeRate API'den döviz fiyatlarını çeker.
-    Döviz oranları 1 birimin kaç TL olduğunu gösterecek şekilde ayarlanır.
-    """
     url = f"https://v6.exchangerate-api.com/v6/{EXCHANGERATE_API_KEY}/latest/TRY"
-    response = requests.get(url)
-    if response.status_code != 200:
-        print("ExchangeRate API isteği başarısız oldu:", response.status_code, response.text)
-        return {}
-    
-    data = response.json()
-    rates = data.get("conversion_rates", {})
-    
-    # 1 birimin kaç TL olduğunu hesaplar (TL'ye bölerek tersine çevirir)
     try:
-        tl_rate = rates["TRY"]
-    except KeyError:
-        print("TRY oranı bulunamadı.")
+        response = requests.get(url)
+        response.raise_for_status()
+        data = response.json()
+        rates = data.get("conversion_rates", {})
+        logging.info("Döviz fiyatları başarıyla alındı.")
+        return {currency: round(1 / rate, 5) for currency, rate in rates.items() if rate > 0}
+    except Exception as e:
+        logging.error(f"ExchangeRate API isteği başarısız oldu: {e}")
         return {}
 
-    return {currency: round(1 / rate, 5) for currency, rate in rates.items() if rate > 0}
-
+# Fiyat güncelleme
 def update_crypto_prices():
     """
-    Veritabanındaki kripto para fiyatlarını Binance API'den güncelleyerek günceller.
+    Updates cryptocurrency prices in the database. If a cryptocurrency is missing, it is inserted.
     """
+    db = get_db_connection()
+    if db is None:
+        logging.error("Database connection failed. Skipping update.")
+        return
+
     all_prices = get_all_crypto_prices()
     if not all_prices:
-        print("Kripto fiyatları alınamadı.")
+        logging.error("No cryptocurrency prices were retrieved. Skipping update.")
         return
     
-    db = get_db_connection()
-    crypto_collection = db['Kripto Para']
-
-    coins = list(crypto_collection.find())
-    for coin in coins:
-        coin_symbol = coin["kripto_adi"] + "USDT"
-        if coin_symbol in all_prices:
-            try:
-                current_price = round(float(all_prices[coin_symbol]), 5)  # Fiyatı 5 basamakla sınırla
-            except (ValueError, TypeError):
-                print(f"{coin_symbol} için fiyat yuvarlanamadı.")
-                continue
-
+    crypto_collection = db['Kripto_Gecmis']
+    try:
+        for symbol, price in all_prices.items():
+            crypto_name = symbol.replace("USDT", "")  # Extract the cryptocurrency name
+            
+            # Check if the document exists
+            existing_coin = crypto_collection.find_one({'kripto_adi': crypto_name})
             current_time = time.strftime('%Y-%m-%d %H:%M:%S')
 
-            crypto_collection.update_one(
-                {'_id': coin['_id']},
-                {'$set': {'guncel_fiyat': current_price, 'guncellenme_zamani': current_time}}
-            )
-            print(f"{coin_symbol} fiyatı güncellendi: {current_price}")
+            if existing_coin and False:
+                # Update the existing document
+                crypto_collection.update_one(
+                    {'_id': existing_coin['_id']},
+                    {'$set': {'guncel_fiyat': round(price, 5), 'guncellenme_zamani': current_time}}
+                )
+                #logging.info(f"Updated {crypto_name} with price {round(price, 5)}")
+            else:
+                # Insert a new document
+                crypto_collection.insert_one({
+                    'kripto_adi': crypto_name,
+                    'fiyat': round(price, 5),
+                    'tarih': current_time
+                })
+                #logging.info(f"Inserted {crypto_name} with price {round(price, 5)}")
+    except Exception as e:
+        logging.error(f"Error while updating/inserting cryptocurrency prices: {e}")
+
 
 def update_currency_prices():
     """
-    Veritabanındaki döviz fiyatlarını ExchangeRate API'den güncelleyerek günceller.
-    Döviz fiyatlarını 1 birimin kaç TL olduğunu gösterecek şekilde günceller.
+    Updates currency prices in the database. If a currency is missing, it is inserted.
     """
+    db = get_db_connection()
+    if db is None:
+        logging.error("Database connection failed. Skipping update.")
+        return
+
     all_rates = get_all_currency_rates()
     if not all_rates:
-        print("Döviz kurları alınamadı.")
+        logging.error("No currency rates were retrieved. Skipping update.")
         return
-    
-    db = get_db_connection()
-    currency_collection = db['Döviz']
 
-    currencies = list(currency_collection.find())
-    for currency in currencies:
-        currency_name = currency["döviz_adi"]
-        if currency_name in all_rates:
-            try:
-                current_price_in_try = all_rates[currency_name]
-            except (ValueError, TypeError):
-                print(f"{currency_name} için fiyat hesaplanamadı.")
-                continue
-
+    currency_collection = db['Döviz_Gecmis']
+    try:
+        for currency, rate in all_rates.items():
+            # Check if the document exists
+            existing_currency = currency_collection.find_one({'döviz_adi': currency})
             current_time = time.strftime('%Y-%m-%d %H:%M:%S')
 
-            currency_collection.update_one(
-                {'_id': currency['_id']},
-                {'$set': {'guncel_fiyat': current_price_in_try, 'guncellenme_zamani': current_time}}
-            )
-            print(f"{currency_name} fiyatı (1 {currency_name} kaç TL): {current_price_in_try}")
+            if existing_currency and False:
+                # Update the existing document
+                currency_collection.update_one(
+                    {'_id': existing_currency['_id']},
+                    {'$set': {'guncel_fiyat': rate, 'guncellenme_zamani': current_time}}
+                )
+                #logging.info(f"Updated {currency} with rate {rate}")
+            else:
+                # Insert a new document
+                currency_collection.insert_one({
+                    'döviz_adi': currency,
+                    'fiyat': rate,
+                    'tarih': current_time
+                })
+                #logging.info(f"Inserted {currency} with rate {rate}")
+    except Exception as e:
+        logging.error(f"Error while updating/inserting currency prices: {e}")
 
-    """
-    Kripto ve döviz fiyatlarının son 24 saatlik yüzdelik değişimini hesaplar.
-    """
-    db = get_db_connection()
-    crypto_collection = db['Kripto Para']
-    crypto_history = db['Kripto_Gecmis']
-    currency_collection = db['Döviz']
-    currency_history = db['Döviz_Gecmis']
-
-    # Sonuçları tutacak dictionary
-    percentage_changes = {
-        'kripto': {},
-        'doviz': {}
-    }
-
-    # Kripto paralar için yüzdelik değişim hesaplama
-    for coin in crypto_collection.find():
-        # Geçmişteki fiyatları al
-        past_prices = list(crypto_history.find(
-            {'kripto_id': coin['_id'], 'tarih': {'$gte': time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(time.time() - 86400))}}
-        ).sort('tarih', 1))
-
-        if not past_prices:
-            continue
-
-        initial_price = past_prices[0]['fiyat']
-        current_price = coin['guncel_fiyat']
-
-        # Yüzdelik değişim hesapla
-        try:
-            percentage_change = round(((current_price - initial_price) / initial_price) * 100, 2)
-        except ZeroDivisionError:
-            percentage_change = 0.0
-
-        # Sonuçları kaydet
-        percentage_changes['kripto'][coin['kripto_adi']] = percentage_change
-
-    # Dövizler için yüzdelik değişim hesaplama
-    for currency in currency_collection.find():
-        # Geçmişteki fiyatları al
-        past_prices = list(currency_history.find(
-            {'döviz_id': currency['_id'], 'tarih': {'$gte': time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(time.time() - 86400))}}
-        ).sort('tarih', 1))
-
-        if not past_prices:
-            continue
-
-        initial_price = past_prices[0]['fiyat']
-        current_price = currency['guncel_fiyat']
-
-        # Yüzdelik değişim hesapla
-        try:
-            percentage_change = round(((current_price - initial_price) / initial_price) * 100, 2)
-        except ZeroDivisionError:
-            percentage_change = 0.0
-
-        # Sonuçları kaydet
-        percentage_changes['doviz'][currency['döviz_adi']] = percentage_change
-
-    print(percentage_changes)
-    return percentage_changes
-
-
-# Initialize database
-db = get_db_connection()
-
-# Set the auto-refresh interval (in seconds)
-AUTO_REFRESH_INTERVAL = 300  # 5 minutes
 
 # Streamlit app layout
 st.title("CryptoApex: Cryptocurrency and Currency Tracker")
 
-# Tabs for navigation
 tab1, tab2 = st.tabs(["Cryptocurrency Prices", "Currency Prices"])
 
 # Cryptocurrency Prices
@@ -200,20 +154,9 @@ with tab1:
         update_crypto_prices()
         st.success("Cryptocurrency prices updated!")
 
-    crypto_data = list(db['Kripto Para'].find({}, {"_id": 0, "kripto_adi": 1, "guncel_fiyat": 1}))
-    st.table(crypto_data)
-
 # Currency Prices
 with tab2:
     st.header("Currency Prices")
     if st.button("Update Currency Prices Now", key="update_currency"):
         update_currency_prices()
         st.success("Currency prices updated!")
-
-    currency_data = list(db['Döviz'].find({}, {"_id": 0, "döviz_adi": 1, "guncel_fiyat": 1}))
-    st.table(currency_data)
-
-# Sidebar auto-refresh toggle
-if st.sidebar.checkbox("Enable Auto-Refresh (5 min)", key="auto_refresh"):
-    time.sleep(AUTO_REFRESH_INTERVAL)
-    st.rerun()  # Automatically rerun the app

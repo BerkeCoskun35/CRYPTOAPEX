@@ -79,12 +79,11 @@ def get_updated_crypto_prices():
     crypto_collection = db['Kripto Para']
 
     crypto_prices = list(crypto_collection.find().sort('kripto_adi', 1))
-
     updated_crypto_prices = [
         {
             '_id': str(item['_id']),
             'kripto_adi': item['kripto_adi'],
-            'kripto_icon': item['kripto_icon'],
+            'kripto_icon': item['kripto_icon'] if item.get('kripto_icon') else 'https://en.wikipedia.org/wiki/Currency#/media/File:AIGA_Currency_Exchange_-_Euro.svg',
             'guncel_fiyat': item['guncel_fiyat']
         }
         for item in crypto_prices
@@ -101,7 +100,7 @@ def get_updated_currency_prices():
         {
             '_id': str(item['_id']),
             'döviz_adi': item['döviz_adi'],
-            'döviz_icon': item['döviz_icon'],
+            'döviz_icon': item['döviz_icon'] if item.get('döviz_icon') else 'https://en.wikipedia.org/wiki/Currency#/media/File:AIGA_Currency_Exchange_-_Euro.svg',
             'guncel_fiyat': item['guncel_fiyat']
         }
         for item in currency_prices
@@ -228,6 +227,7 @@ def index():
         user_favorites = {fav['name'] for fav in favorites}  # Collect only names
     return render_template('index.html', updated_crypto_prices=updated_crypto_prices, updated_currency_prices=updated_currency_prices, user_favorites=user_favorites)
 
+
 @app.route('/api/favorites', methods=['GET'])
 def get_favorites():
     if 'user_id' not in session:
@@ -302,8 +302,8 @@ def logout():
     message = 'Çıkış yapıldı.'
     return render_template('login.html', message=message)
 
-price_updater_thread = threading.Thread(target=start_price_updater, daemon=True)
-price_updater_thread.start()
+#price_updater_thread = threading.Thread(target=start_price_updater, daemon=True)
+#price_updater_thread.start()
 
 if __name__ == '__main__':
     app.run(debug=False)

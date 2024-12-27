@@ -37,7 +37,6 @@
                 <p>{{ item['kripto_kodu'] }}</p>
                 <h2>{{ item['guncel_fiyat'] }} USD</h2>
                 <p class="price-change positive">+0.25% (+$6.21)</p>
-<<<<<<< Updated upstream
                 <button class="favorite-button {% if item['kripto_adi'] in user_favorites %}favorited{% endif %}" 
                     data-name="{{ item['kripto_adi'] }}" 
                     data-type="crypto" 
@@ -46,12 +45,6 @@
                 </button>
                 
                 <button class="details-button" onclick="showDetails('{{ item['_id'] }}', 'crypto')">Daha fazlası</button>
-=======
-                <button class="favorite-button" onclick="toggleFavorite(this)">
-                    <a class="star-icon"></a>
-                </button>
-                <button class="details-button">More details</button>
->>>>>>> Stashed changes
             </div>
             {% endfor %}
         </div>
@@ -64,21 +57,13 @@
                 <p>{{ item['döviz_kodu'] }}</p>
                 <h2>{{ item['guncel_fiyat'] }} ₺</h2>
                 <p class="price-change positive">+0.25% (+$6.21)</p>
-<<<<<<< Updated upstream
                 <button class="favorite-button {% if item['döviz_adi'] in user_favorites %}favorited{% endif %}" 
                     data-name="{{ item['döviz_adi'] }}" 
                     data-type="currency" 
                     onclick="toggleFavorite(this)">
                     <span class="star-icon"></span>
                 </button>
-                
-                <button class="details-button" onclick="showDetails('{{ item['_id'] }}', 'currency')">Daha fazlası</button>
-=======
-                <button class="favorite-button" onclick="toggleFavorite(this)">
-                    <a class="star-icon"></a>
-                </button>
-                <button class="details-button">More details</button>
->>>>>>> Stashed changes
+                <button class="details-button" onclick="showDetails('{{ item['_id'] }}', 'currency')">Daha fazlası</button>           
             </div>
             {% endfor %}
         </div>
