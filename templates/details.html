@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="static/styles.css">
+    <title>{{ item_name }} Details</title>
+</head>
+<body>
+    <h1>{{ item_name }} Historical Chart</h1>
+    {% if error %}
+    <p>{{ error }}</p>
+    {% else %}
+    <div>{{ chart_html|safe }}</div>
+    {% endif %}
+    <p><a href="/">Back to Home</a></p>
+</body>
+</html>

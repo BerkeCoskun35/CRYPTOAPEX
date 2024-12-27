@@ -4,6 +4,8 @@ from database import get_db_connection
 from api import start_price_updater
 import threading
 from bson.objectid import ObjectId
+import pandas as pd
+import plotly.graph_objects as go
 
 app = Flask(__name__)   
 app.secret_key = 'cryptoapex_x'
@@ -76,37 +78,133 @@ def get_updated_crypto_prices():
     db = get_db_connection()
     crypto_collection = db['Kripto Para']
 
-    # Kripto verilerini alfabetik sıralama ile al
-    crypto_prices = list(crypto_collection.find().sort('kripto_adi', 1))  # 1 = Artan sıralama (A-Z)
+    crypto_prices = list(crypto_collection.find().sort('kripto_adi', 1))
 
-    # Güncel fiyatları ve ikonları düzenle
     updated_crypto_prices = [
         {
+            '_id': str(item['_id']),
             'kripto_adi': item['kripto_adi'],
             'kripto_icon': item['kripto_icon'],
-            'guncel_fiyat': format_price(item['guncel_fiyat'])
-        } for item in crypto_prices
+            'guncel_fiyat': item['guncel_fiyat']
+        }
+        for item in crypto_prices
     ]
-
     return updated_crypto_prices
 
 def get_updated_currency_prices():
     db = get_db_connection()
     currency_collection = db['Döviz']
 
-    # Döviz verilerini alfabetik sıralama ile al
-    currency_prices = list(currency_collection.find().sort('döviz_adi', 1))  # 1 = Artan sıralama (A-Z)
+    currency_prices = list(currency_collection.find().sort('döviz_adi', 1))
 
-    # Güncel fiyatları ve ikonları düzenle
     updated_currency_prices = [
         {
+            '_id': str(item['_id']),
             'döviz_adi': item['döviz_adi'],
             'döviz_icon': item['döviz_icon'],
-            'guncel_fiyat': format_price(item['guncel_fiyat'])
-        } for item in currency_prices
+            'guncel_fiyat': item['guncel_fiyat']
+        }
+        for item in currency_prices
     ]
-
     return updated_currency_prices
+
+
+# Fetch historical data for a specific item
+def get_historical_data(item_id, item_type):
+    db = get_db_connection()
+    collection = db["Kripto_Gecmis"] if item_type == "crypto" else db["Döviz_Gecmis"]
+    history = list(collection.find({"kripto_id" if item_type == "crypto" else "döviz_id": ObjectId(item_id)}))
+
+    if not history:
+        print("No historical data found in the database.")
+        return pd.DataFrame()
+
+    # Convert MongoDB data to DataFrame
+    df = pd.DataFrame(history)
+    if "fiyat" not in df.columns or "tarih" not in df.columns:
+        print("Missing required columns in the database data:", df.columns)
+        return pd.DataFrame()
+
+    # Convert 'tarih' to datetime
+    df["time"] = pd.to_datetime(df["tarih"], errors="coerce")
+    return df
+
+
+# Generate a historical chart
+def generate_chart(df, item_name):
+    # Ensure required columns exist
+    required_columns = {"fiyat", "time"}
+    missing_columns = required_columns - set(df.columns)
+    if missing_columns:
+        raise ValueError(f"Missing required columns in data: {missing_columns}")
+
+    # Calculate price changes and trends
+    df["price_change"] = df["fiyat"].diff()  # Calculate the change in price
+    df["price_trend"] = df["price_change"].apply(lambda x: "Increasing" if x > 0 else "Decreasing")
+
+    # Identify segments of continuous trends
+    df["segment"] = (df["price_trend"] != df["price_trend"].shift()).cumsum()
+
+    # Create a unique label for each segment based on the time range
+    df["segment_label"] = (
+        df.groupby("segment")["time"]
+        .transform(lambda x: f"{x.min().strftime('%H:%M')} - {x.max().strftime('%H:%M')}")
+    )
+
+    # Create box chart for each segment
+    fig = go.Figure()
+    segments = df["segment"].unique()
+
+    for segment in segments:
+        segment_df = df[df["segment"] == segment]
+        trend_type = segment_df["price_trend"].iloc[0]  # "Increasing" or "Decreasing"
+        color = "green" if trend_type == "Increasing" else "red"
+        label = segment_df["segment_label"].iloc[0]  # Time range for the segment
+        fig.add_trace(
+            go.Box(
+                y=segment_df["fiyat"],
+                name=label,  # Label box by time range
+                marker=dict(color=color),
+                boxpoints=False,  # No individual dots; only box representation
+                width=0.7,  # Increase box width
+            )
+        )
+
+    # Update layout for better visualization
+    fig.update_layout(
+        title=f"{item_name} Sequential Price Trends",
+        yaxis_title="Price (USD)",
+        xaxis_title="Time Segments",
+        xaxis=dict(tickangle=45),  # Rotate x-axis labels for better visibility
+        boxmode="group",  # Display boxes side-by-side
+    )
+    return fig.to_html(full_html=False)
+
+
+
+
+@app.route("/details/<item_type>/<item_id>")
+def show_details(item_type, item_id):
+    db = get_db_connection()
+    if item_type == "crypto":
+        item = db["Kripto Para"].find_one({"_id": ObjectId(item_id)})
+        item_name = item.get("kripto_adi", "Unknown")
+    else:
+        item = db["Döviz"].find_one({"_id": ObjectId(item_id)})
+        item_name = item.get("döviz_adi", "Unknown")
+
+    df = get_historical_data(item_id, item_type)
+    if df.empty:
+        return render_template("details.html", chart_html=None, item_name=item_name, error="No historical data available.")
+
+    try:
+        chart_html = generate_chart(df, item_name)
+    except ValueError as e:
+        print("Error generating chart:", str(e))
+        return render_template("details.html", chart_html=None, item_name=item_name, error=str(e))
+
+    return render_template("details.html", chart_html=chart_html, item_name=item_name)
+
 
 def format_price(price):
     try:
