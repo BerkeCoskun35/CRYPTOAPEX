@@ -37,9 +37,10 @@
                 <p>{{ item['kripto_kodu'] }}</p>
                 <h2>{{ item['guncel_fiyat'] }} USD</h2>
                 <p class="price-change positive">+0.25% (+$6.21)</p>
-                <button class="favorite-button" onclick="toggleFavorite(this)">
+                <button class="favorite-button {% if item['kripto_adi'] in user_favorites %}favorited{% endif %}" data-name="{{ item['kripto_adi'] }}" data-type="crypto" onclick="toggleFavorite(this)">
                     <a class="star-icon"></a>
                 </button>
+                
                 <button class="details-button">More details</button>
             </div>
             {% endfor %}
@@ -53,9 +54,13 @@
                 <p>{{ item['döviz_kodu'] }}</p>
                 <h2>{{ item['guncel_fiyat'] }} ₺</h2>
                 <p class="price-change positive">+0.25% (+$6.21)</p>
-                <button class="favorite-button" onclick="toggleFavorite(this)">
-                    <a class="star-icon"></a>
-                </button>
+                <button class="favorite-button {% if item['döviz_adi'] in user_favorites %}favorited{% endif %}" 
+        data-name="{{ item['döviz_adi'] }}" 
+        data-type="currency" 
+        onclick="toggleFavorite(this)">
+    <span class="star-icon"></span>
+</button>
+                
                 <button class="details-button">More details</button>
             </div>
             {% endfor %}

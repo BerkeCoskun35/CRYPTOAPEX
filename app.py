@@ -3,8 +3,9 @@ import hashlib
 from database import get_db_connection
 from api import start_price_updater
 import threading
+from bson.objectid import ObjectId
 
-app = Flask(__name__)
+app = Flask(__name__)   
 app.secret_key = 'cryptoapex_x'
 
 def hash_password(password):
@@ -83,7 +84,7 @@ def get_updated_crypto_prices():
         {
             'kripto_adi': item['kripto_adi'],
             'kripto_icon': item['kripto_icon'],
-            'guncel_fiyat': item['guncel_fiyat']
+            'guncel_fiyat': format_price(item['guncel_fiyat'])
         } for item in crypto_prices
     ]
 
@@ -101,19 +102,86 @@ def get_updated_currency_prices():
         {
             'döviz_adi': item['döviz_adi'],
             'döviz_icon': item['döviz_icon'],
-            'guncel_fiyat': item['guncel_fiyat']
+            'guncel_fiyat': format_price(item['guncel_fiyat'])
         } for item in currency_prices
     ]
 
     return updated_currency_prices
 
+def format_price(price):
+    try:
+        # Convert to float if it is in scientific notation
+        float_price = float(price)
+        # Format to 5 decimal places and remove trailing zeros
+        return "{:.5f}".format(float_price).rstrip('0').rstrip('.')
+    except (ValueError, TypeError):
+        # Return the price as-is if formatting fails
+        return str(price)
 
 @app.route('/')
 def index():
+    user_id = session.get('user_id')
+    db = get_db_connection()
     updated_crypto_prices = get_updated_crypto_prices()
     updated_currency_prices = get_updated_currency_prices()
-    return render_template('index.html', updated_crypto_prices=updated_crypto_prices, updated_currency_prices=updated_currency_prices)
+    user_favorites = set()  # Use a set for faster lookups
+    if user_id:
+        favorites = db['favorites'].find({'user_id': ObjectId(user_id)})
+        user_favorites = {fav['name'] for fav in favorites}  # Collect only names
+    return render_template('index.html', updated_crypto_prices=updated_crypto_prices, updated_currency_prices=updated_currency_prices, user_favorites=user_favorites)
 
+@app.route('/api/favorites', methods=['GET'])
+def get_favorites():
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': 'Kullanıcı giriş yapmamış.'}), 401
+    user_id = session['user_id']
+    db = get_db_connection()
+    favorites = db['favorites'].find({'user_id': ObjectId(user_id)})
+    return jsonify({'success': True, 'favorites': [{'name': fav['name'], 'type': fav['type']} for fav in favorites]})
+
+@app.route('/api/favorite', methods=['POST'])
+def toggle_favorite():
+    try:
+        if 'user_id' not in session:
+            print("Session error: user_id not found.")
+            return jsonify({'success': False, 'message': 'Kullanıcı giriş yapmamış.'}), 401
+
+        user_id = session['user_id']
+        print("User ID from session:", user_id)
+
+        data = request.json
+        print("Received data:", data)
+
+        item_type = data.get('type')
+        item_name = data.get('name')
+
+        if not item_type or not item_name:
+            print("Validation error: Missing type or name.")
+            return jsonify({'success': False, 'message': 'Eksik veri gönderildi.'}), 400
+
+        db = get_db_connection()
+        print("Database connection established.")
+        favorites = db['favorites']
+
+        try:
+            user_id_object = ObjectId(user_id)
+        except Exception as id_error:
+            print("Error converting user_id to ObjectId:", id_error)
+            return jsonify({'success': False, 'message': 'Geçersiz user_id'}), 400
+
+        existing_favorite = favorites.find_one({'user_id': user_id_object, 'type': item_type, 'name': item_name})
+        if existing_favorite:
+            favorites.delete_one({'_id': existing_favorite['_id']})
+            print("Favorite removed:", existing_favorite)
+            return jsonify({'success': True, 'action': 'removed'})
+
+        new_favorite = {'user_id': user_id_object, 'type': item_type, 'name': item_name}
+        favorites.insert_one(new_favorite)
+        print("Favorite added:", new_favorite)
+        return jsonify({'success': True, 'action': 'added'})
+    except Exception as e:
+        print("Error:", str(e))
+        return jsonify({'success': False, 'message': str(e)}), 500
 
 
 

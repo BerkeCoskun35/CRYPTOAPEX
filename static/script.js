@@ -33,25 +33,56 @@ function clearInputs() {
 
 
 window.onload = function() {
-    const panel = document.getElementById('notificationPanel');
-    panel.style.display = 'none'; 
     clearInputs();
-}
+
+    // Kullanıcının favorilerini yükle
+    fetch('/api/favorites')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const favorites = data.favorites;
+                favorites.forEach(favorite => {
+                    const buttons = document.querySelectorAll(`button[data-name="${favorite.name}"][data-type="${favorite.type}"]`);
+                    buttons.forEach(button => {
+                        button.classList.add('favorited');
+                    });
+                });
+            }
+        })
+        .catch(error => console.error('Favoriler alınırken hata:', error));
+};
+
 
 function toggleFavorite(button) {
-    // Kullanıcı giriş yapmış mı kontrol et
+    const itemName = button.getAttribute('data-name');
+    const itemType = button.getAttribute('data-type');
+
     fetch('/api/check-login')
         .then(response => response.json())
         .then(data => {
             if (data.isLoggedIn) {
-                // Kullanıcı giriş yapmışsa favoriyi ekle/kaldır
-                button.classList.toggle('favorited');
+                fetch('/api/favorite', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ name: itemName, type: itemType })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        if (data.action === 'added') {
+                            button.classList.add('favorited');
+                        } else if (data.action === 'removed') {
+                            button.classList.remove('favorited');
+                        }
+                    }
+                })
+                .catch(error => console.error('Favori işlemi sırasında bir hata oluştu:', error));
             } else {
-                // Giriş yapılmamışsa login sayfasına yönlendir
                 window.location.href = '/login';
             }
         })
-        .catch(error => {
-            console.error('Login durumu kontrol edilirken bir hata oluştu:', error);
-        });
+        .catch(error => console.error('Login durumu kontrol edilirken bir hata oluştu:', error));
 }
+
