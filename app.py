@@ -302,8 +302,8 @@ def logout():
     message = 'Çıkış yapıldı.'
     return render_template('login.html', message=message)
 
-#price_updater_thread = threading.Thread(target=start_price_updater, daemon=True)
-#price_updater_thread.start()
+price_updater_thread = threading.Thread(target=start_price_updater, daemon=True)
+price_updater_thread.start()
 
 if __name__ == '__main__':
     app.run(debug=False)
