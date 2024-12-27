@@ -16,7 +16,7 @@
             </button>
             {% endif %}
             <button>
-                <a href="/register">
+                <a href="/login">
                     <img src="static/images/profile.png" alt="Profil">
                 </a>
             </button>
@@ -44,7 +44,7 @@
                     <span class="star-icon"></span>
                 </button>
                 
-                <button class="details-button" onclick="showDetails('{{ item['_id'] }}', 'crypto')">More details</button>
+                <button class="details-button" onclick="showDetails('{{ item['_id'] }}', 'crypto')">Daha fazlası</button>
             </div>
             {% endfor %}
         </div>
@@ -64,7 +64,7 @@
                     <span class="star-icon"></span>
                 </button>
                 
-                <button class="details-button" onclick="showDetails('{{ item['_id'] }}', 'currency')">More details</button>
+                <button class="details-button" onclick="showDetails('{{ item['_id'] }}', 'currency')">Daha fazlası</button>
             </div>
             {% endfor %}
         </div>
