@@ -285,7 +285,7 @@ def toggle_favorite():
 
 @app.route('/api/prices', methods=['GET'])
 def get_prices():
-    updated_prices = get_updated_crypto_prices() + get_updated_currency_prices()  # Her iki tür fiyatları birleştiriyoruz
+    updated_prices = get_updated_crypto_prices() + get_updated_currency_prices()
     return jsonify(updated_prices)
 
 @app.route('/api/check-login', methods=['GET'])
