@@ -19,6 +19,15 @@ body {
     margin-top: 60px; 
 }
 
+.graphic {
+    max-width: 1800px;
+    margin: 10px auto;
+    padding: 20px;
+    background-color: #080a0f;
+    border-radius: 10px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+}
+
 /* Navbar Styling */
 .navbar {
     width: 100%;
@@ -33,6 +42,7 @@ body {
     left: 0;
     z-index: 1000;
 }
+
 
 .navbar-logo {
     font-size: 24px; 
@@ -99,6 +109,7 @@ body {
     justify-content: center;
     padding: 20px;
     margin: 0 auto;
+    margin-bottom: 0;   
 }
 
 /* Card Styling */
@@ -110,6 +121,16 @@ body {
     text-align: center;
     margin: 10px;
     box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+    transition: transform 0.2s ease-in-out;
+}
+
+.crypto-card:hover {
+    transform: scale(1.1);
+    background-color: #1a1a1a;
+}
+.currency-card:hover {
+    transform: scale(1.1);
+    background-color: #1a1a1a;
 }
 
 .crypto-card img, .currency-card img {
@@ -160,11 +181,18 @@ body {
 
 .details-button {
     background-color: #ffae00;
+    transition: background-color 0.3s, transform 0.2s;
 }
-.details-button a:hover{
+
+.details-button:hover {
+    background-color: #c48602;
+    transform: scale(1.05); /* Slightly grow the button */
+}
+
+/* .details-button a:hover{
     background-color: #c48602;
     color: #ffffff
-}
+} */
 
 .favorite-button .star-icon {
     font-size: 24px;
@@ -185,15 +213,6 @@ body {
     transform: scale(1.2);
 }
 
-.chart-container {
-    background-color: #242424;
-    padding: 40px;
-    border-radius: 8px;
-    width: 100%;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
-    text-align: center;
-    margin-top: -200px; 
-}
 
 /* Form Container */
 .form-container {

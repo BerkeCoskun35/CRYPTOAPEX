@@ -28,7 +28,7 @@
         </div>
     </div>
 
-    <div class="cards-container">
+    <!-- <div class="cards-container">
         <div class="crypto-cards">
             {% for item in updated_crypto_prices %}
             <div class="crypto-card">
@@ -43,8 +43,7 @@
                     onclick="toggleFavorite(this)">
                     <span class="star-icon"></span>
                 </button>
-                
-                <button class="details-button" onclick="showDetails('{{ item['_id'] }}', 'crypto')">Daha fazlası</button>
+                <button class="details-button" onclick="showDetails('{{ item['kripto_adi']|e }}', 'crypto')">Daha Fazlası</button>
             </div>
             {% endfor %}
         </div>
@@ -63,22 +62,61 @@
                     onclick="toggleFavorite(this)">
                     <span class="star-icon"></span>
                 </button>
-                <button class="details-button" onclick="showDetails('{{ item['_id'] }}', 'currency')">Daha fazlası</button>           
+                <button class="details-button" onclick="showDetails('{{ item['döviz_adi']|e }}', 'currency')">Daha Fazlası</button>
+            </div>
+            {% endfor %}
+        </div>
+    </div> -->
+
+    <div class="cards-container">
+        <div class="crypto-cards">
+            {% for item in updated_crypto_prices %}
+            <div class="crypto-card">
+                <img src="{{ item['kripto_icon'] }}" alt="{{ item['kripto_adi'] }}">
+                <h3>{{ item['kripto_adi'] }}</h3>
+                <p>{{ item['kripto_kodu'] }}</p>
+                <h2>{{ item['guncel_fiyat'] }} USD</h2>
+                <button class="favorite-button {% if item['kripto_adi'] in user_favorites %}favorited{% endif %}" 
+                    data-name="{{ item['kripto_adi'] }}" 
+                    data-type="crypto" 
+                    onclick="toggleFavorite(this)">
+                    <span class="star-icon"></span>
+                </button>
+                <button class="details-button" onclick="showDetails('{{ item['kripto_adi']|e }}', 'crypto')">Daha Fazlası</button>
+            </div>
+            {% endfor %}
+        </div>
+    
+        <div class="currency-cards">
+            {% for item in updated_currency_prices %}
+            <div class="currency-card">
+                <img src="{{ item['döviz_icon'] }}" alt="{{ item['döviz_adi'] }}">
+                <h3>{{ item['döviz_adi'] }}</h3>
+                <p>{{ item['döviz_kodu'] }}</p>
+                <h2>{{ item['guncel_fiyat'] }} ₺</h2>
+                <p class="price-change positive">+0.25% (+$6.21)</p>
+                <button class="favorite-button {% if item['döviz_adi'] in user_favorites %}favorited{% endif %}" 
+                    data-name="{{ item['döviz_adi'] }}" 
+                    data-type="currency" 
+                    onclick="toggleFavorite(this)">
+                    <span class="star-icon"></span>
+                </button>
+                <button class="details-button" onclick="showDetails('{{ item['döviz_adi']|e }}', 'currency')">Daha Fazlası</button>
             </div>
             {% endfor %}
         </div>
     </div>
     
+
     <script>
-    function showDetails(itemId, itemType) {
-        window.location.href = `/details/${itemType}/${itemId}`;
+    /**
+     * Detaylar sayfasına yönlendirme yapar.
+     * İsim verisini güvenli bir şekilde URL'de kullanır.
+     */
+    function showDetails(itemName, itemType) {
+        window.location.href = `/details/${itemType}/${encodeURIComponent(itemName)}`;
     }
     </script>
-    
-    
-    
-    
-      
 
     <script src="static/script.js"></script>
 </body>

@@ -6,6 +6,10 @@ import threading
 from bson.objectid import ObjectId
 import pandas as pd
 import plotly.graph_objects as go
+import smtplib
+from email.mime.text import MIMEText
+from datetime import datetime
+import time
 
 app = Flask(__name__)   
 app.secret_key = 'cryptoapex_x'
@@ -79,11 +83,12 @@ def get_updated_crypto_prices():
     crypto_collection = db['Kripto Para']
 
     crypto_prices = list(crypto_collection.find().sort('kripto_adi', 1))
+
     updated_crypto_prices = [
         {
             '_id': str(item['_id']),
             'kripto_adi': item['kripto_adi'],
-            'kripto_icon': item['kripto_icon'] if item.get('kripto_icon') else 'https://en.wikipedia.org/wiki/Currency#/media/File:AIGA_Currency_Exchange_-_Euro.svg',
+            'kripto_icon': item['kripto_icon'],
             'guncel_fiyat': item['guncel_fiyat']
         }
         for item in crypto_prices
@@ -100,7 +105,7 @@ def get_updated_currency_prices():
         {
             '_id': str(item['_id']),
             'döviz_adi': item['döviz_adi'],
-            'döviz_icon': item['döviz_icon'] if item.get('döviz_icon') else 'https://en.wikipedia.org/wiki/Currency#/media/File:AIGA_Currency_Exchange_-_Euro.svg',
+            'döviz_icon': item['döviz_icon'],
             'guncel_fiyat': item['guncel_fiyat']
         }
         for item in currency_prices
@@ -109,100 +114,154 @@ def get_updated_currency_prices():
 
 
 # Fetch historical data for a specific item
-def get_historical_data(item_id, item_type):
+def get_historical_data(item_name, item_type):
+    """
+    Belirli bir öğenin tarihsel verilerini alır ve DataFrame olarak döndürür.
+    """
     db = get_db_connection()
     collection = db["Kripto_Gecmis"] if item_type == "crypto" else db["Döviz_Gecmis"]
-    history = list(collection.find({"kripto_id" if item_type == "crypto" else "döviz_id": ObjectId(item_id)}))
+
+    # İsme göre sorgu
+    query = {"crypto_name": item_name} if item_type == "crypto" else {"currency_name": item_name}
+    print("Sorgu:", query)  # Debugging için log
+    history = list(collection.find(query))
 
     if not history:
-        print("No historical data found in the database.")
+        print("Veritabanında tarihsel veri bulunamadı.")
         return pd.DataFrame()
 
-    # Convert MongoDB data to DataFrame
+    # DataFrame'e dönüştür
     df = pd.DataFrame(history)
-    if "fiyat" not in df.columns or "tarih" not in df.columns:
-        print("Missing required columns in the database data:", df.columns)
+    print("Çekilen veriler:", df.head())  # Debugging için log
+
+    # Eksik sütun kontrolü
+    required_columns = {"open_time", "close_time", "open", "high", "low", "close"}
+    missing_columns = required_columns - set(df.columns)
+    if missing_columns:
+        print("Eksik sütunlar:", missing_columns)
         return pd.DataFrame()
 
-    # Convert 'tarih' to datetime
-    df["time"] = pd.to_datetime(df["tarih"], errors="coerce")
+    # Zaman verilerini pandas datetime formatına dönüştür
+    df["open_time"] = pd.to_datetime(df["open_time"], errors="coerce")
+    df["close_time"] = pd.to_datetime(df["close_time"], errors="coerce")
+
     return df
+
 
 
 # Generate a historical chart
 def generate_chart(df, item_name):
-    # Ensure required columns exist
-    required_columns = {"fiyat", "time"}
+    """
+    Tarihsel veri kullanarak Binance tarzı mum grafiği oluşturur.
+    Fare ile basılı tutarak sürükleme (pan) ve zoom özellikleri desteklenir.
+    """
+    # Eksik sütunları kontrol et
+    required_columns = {"open_time", "open", "high", "low", "close"}
     missing_columns = required_columns - set(df.columns)
     if missing_columns:
-        raise ValueError(f"Missing required columns in data: {missing_columns}")
+        raise ValueError(f"Eksik sütunlar: {missing_columns}")
 
-    # Calculate price changes and trends
-    df["price_change"] = df["fiyat"].diff()  # Calculate the change in price
-    df["price_trend"] = df["price_change"].apply(lambda x: "Increasing" if x > 0 else "Decreasing")
-
-    # Identify segments of continuous trends
-    df["segment"] = (df["price_trend"] != df["price_trend"].shift()).cumsum()
-
-    # Create a unique label for each segment based on the time range
-    df["segment_label"] = (
-        df.groupby("segment")["time"]
-        .transform(lambda x: f"{x.min().strftime('%H:%M')} - {x.max().strftime('%H:%M')}")
-    )
-
-    # Create box chart for each segment
-    fig = go.Figure()
-    segments = df["segment"].unique()
-
-    for segment in segments:
-        segment_df = df[df["segment"] == segment]
-        trend_type = segment_df["price_trend"].iloc[0]  # "Increasing" or "Decreasing"
-        color = "green" if trend_type == "Increasing" else "red"
-        label = segment_df["segment_label"].iloc[0]  # Time range for the segment
-        fig.add_trace(
-            go.Box(
-                y=segment_df["fiyat"],
-                name=label,  # Label box by time range
-                marker=dict(color=color),
-                boxpoints=False,  # No individual dots; only box representation
-                width=0.7,  # Increase box width
+    # Mum grafiği oluştur
+    fig = go.Figure(
+        data=[
+            go.Candlestick(
+                x=df["open_time"],       # Zaman ekseni
+                open=df["open"],         # Açılış fiyatları
+                high=df["high"],         # En yüksek fiyatlar
+                low=df["low"],           # En düşük fiyatlar
+                close=df["close"],       # Kapanış fiyatları
+                increasing=dict(line=dict(color="#0fdb8c")),  # Yükselen mumlar (yeşil)
+                decreasing=dict(line=dict(color="#f23030")),  # Düşen mumlar (kırmızı)
+                name=item_name           # Grafik başlığı
             )
-        )
-
-    # Update layout for better visualization
-    fig.update_layout(
-        title=f"{item_name} Sequential Price Trends",
-        yaxis_title="Price (USD)",
-        xaxis_title="Time Segments",
-        xaxis=dict(tickangle=45),  # Rotate x-axis labels for better visibility
-        boxmode="group",  # Display boxes side-by-side
+        ]
     )
-    return fig.to_html(full_html=False)
+
+    # Grafik düzenlemeleri
+    fig.update_layout(
+        title=dict(
+            text=f"{item_name} Mum Grafiği",
+            x=0.5,  # Ortalamak için
+            font=dict(
+                size=24,
+                color="white"
+            )
+        ),
+        xaxis_title="Zaman",
+        yaxis_title="Fiyat (USD)",
+        template="plotly_dark",  # Modern ve koyu bir tema
+        height=600,              # Grafik yüksekliği
+        margin=dict(l=50, r=50, t=50, b=50),  # Grafik kenar boşlukları
+        font=dict(
+            family="Roboto, Arial, sans-serif",
+            size=14,
+            color="white"
+        ),
+        plot_bgcolor="#1a1a1a",   # Grafik arka planı
+        paper_bgcolor="#1a1a1a",  # Dış arka plan
+        hovermode="x unified",    # Hover etkisi için tüm eksenleri birleştir
+        dragmode="pan",           # Fare ile sürükleme (pan) modu
+    )
+
+    # Zaman ekseni ayarları
+    fig.update_xaxes(
+        rangeslider=dict(visible=True, bgcolor="#333"),  # Zaman kaydırıcısı
+        tickformat="%Y-%m-%d %H:%M",                    # Tarih formatı
+        showgrid=True,                                  # Grid çizgileri
+        gridcolor="#444"                                # Grid çizgileri rengi
+    )
+
+    # Fiyat ekseni için dinamik ölçekleme
+    fig.update_yaxes(
+        autorange=True,              # Y ekseni dinamik olarak ölçeklensin
+        fixedrange=False,            # Y ekseni serbest zoom yapabilsin
+        tickformat=".2f",            # 2 ondalık gösterim
+        showgrid=True,               # Grid çizgileri
+        gridcolor="#444",            # Grid çizgileri rengi
+    )
+
+    # Fare tekerleği ile zoom ve pan gibi etkileşimleri etkinleştir
+    config = {
+        "scrollZoom": True,  # Fare tekerleği ile zoom yapmayı etkinleştirir
+        "displayModeBar": True,  # Mod çubuğunu her zaman görünür yapar
+        "displaylogo": False,  # Plotly logosunu kaldırır
+    }
+
+    # HTML olarak döndür
+    return fig.to_html(full_html=False, config=config)
 
 
 
 
-@app.route("/details/<item_type>/<item_id>")
-def show_details(item_type, item_id):
+@app.route("/details/<item_type>/<item_name>")
+def show_details(item_type, item_name):
     db = get_db_connection()
-    if item_type == "crypto":
-        item = db["Kripto Para"].find_one({"_id": ObjectId(item_id)})
-        item_name = item.get("kripto_adi", "Unknown")
-    else:
-        item = db["Döviz"].find_one({"_id": ObjectId(item_id)})
-        item_name = item.get("döviz_adi", "Unknown")
 
-    df = get_historical_data(item_id, item_type)
+    # Veritabanı sorgusu
+    if item_type == "crypto":
+        item = db["Kripto_Gecmis"].find_one({"crypto_name": item_name})
+        if not item:
+            return render_template("details.html", chart_html=None, item_name=item_name, error="No data found for the selected cryptocurrency.")
+    else:
+        item = db["Döviz_Gecmis"].find_one({"currency_name": item_name})
+        if not item:
+            return render_template("details.html", chart_html=None, item_name=item_name, error="No data found for the selected currency.")
+
+    # Tarihsel verileri al
+    df = get_historical_data(item_name, item_type)  # item_id yerine item_name gönderiliyor
     if df.empty:
         return render_template("details.html", chart_html=None, item_name=item_name, error="No historical data available.")
 
+    # Grafik oluşturma
     try:
         chart_html = generate_chart(df, item_name)
     except ValueError as e:
-        print("Error generating chart:", str(e))
+        print("Grafik oluşturma hatası:", str(e))
         return render_template("details.html", chart_html=None, item_name=item_name, error=str(e))
 
+    # Başarılı sonuç döndür
     return render_template("details.html", chart_html=chart_html, item_name=item_name)
+
 
 
 def format_price(price):
@@ -215,17 +274,35 @@ def format_price(price):
         # Return the price as-is if formatting fails
         return str(price)
 
+# @app.route('/')
+# def index():
+#     user_id = session.get('user_id')
+#     db = get_db_connection()
+#     updated_crypto_prices = get_updated_crypto_prices()
+#     updated_currency_prices = get_updated_currency_prices()
+#     user_favorites = set()  # Use a set for faster lookups
+#     if user_id:
+#         favorites = db['favorites'].find({'user_id': ObjectId(user_id)})
+#         user_favorites = {fav['name'] for fav in favorites}  # Collect only names
+#     return render_template('index.html', updated_crypto_prices=updated_crypto_prices, updated_currency_prices=updated_currency_prices, user_favorites=user_favorites)
+
 @app.route('/')
 def index():
     user_id = session.get('user_id')
     db = get_db_connection()
     updated_crypto_prices = get_updated_crypto_prices()
     updated_currency_prices = get_updated_currency_prices()
-    user_favorites = set()  # Use a set for faster lookups
+    
+    user_favorites = set()  # Kullanıcının favorilerini saklamak için set
     if user_id:
         favorites = db['favorites'].find({'user_id': ObjectId(user_id)})
-        user_favorites = {fav['name'] for fav in favorites}  # Collect only names
-    return render_template('index.html', updated_crypto_prices=updated_crypto_prices, updated_currency_prices=updated_currency_prices, user_favorites=user_favorites)
+        user_favorites = {fav['name'] for fav in favorites}  # Favori isimlerini set'e ekliyoruz
+
+    # Favorilere öncelik vererek sıralama yapıyoruz
+    sorted_crypto_prices = sorted(updated_crypto_prices, key=lambda x: (x['kripto_adi'] not in user_favorites, x['kripto_adi']))
+    sorted_currency_prices = sorted(updated_currency_prices, key=lambda x: (x['döviz_adi'] not in user_favorites, x['döviz_adi']))
+
+    return render_template('index.html', updated_crypto_prices=sorted_crypto_prices, updated_currency_prices=sorted_currency_prices, user_favorites=user_favorites)
 
 
 @app.route('/api/favorites', methods=['GET'])
@@ -285,7 +362,7 @@ def toggle_favorite():
 
 @app.route('/api/prices', methods=['GET'])
 def get_prices():
-    updated_prices = get_updated_crypto_prices() + get_updated_currency_prices()
+    updated_prices = get_updated_crypto_prices() + get_updated_currency_prices()  # Her iki tür fiyatları birleştiriyoruz
     return jsonify(updated_prices)
 
 @app.route('/api/check-login', methods=['GET'])

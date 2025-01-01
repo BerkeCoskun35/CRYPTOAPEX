@@ -41,6 +41,22 @@ def get_all_currency_rates():
 
     return {currency: round(1 / rate, 5) for currency, rate in rates.items() if rate > 0}
 
+def format_price(price):
+    """
+    Fiyatları düzenler:
+    - Eğer fiyat çok küçükse virgülden sonra maksimum 6 basamak gösterir.
+    - Gereksiz sıfırları ve noktaları kaldırır.
+    """
+    try:
+        price = float(price)  # Fiyatı float'a çevir
+        if price < 0.000001:  # Çok küçük sayılar için
+            return "{:.6f}".format(price).rstrip('0').rstrip('.')
+        return "{:.6f}".format(price).rstrip('0').rstrip('.')  # Maksimum 6 basamak ve gereksiz sıfırları kaldır
+    except ValueError:
+        return str(price)  # Eğer hata oluşursa olduğu gibi döndür
+
+
+
 def update_crypto_prices():
     """
     Veritabanındaki kripto para fiyatlarını Binance API'den güncelleyerek günceller.
@@ -58,18 +74,21 @@ def update_crypto_prices():
         coin_symbol = coin["kripto_adi"] + "USDT"
         if coin_symbol in all_prices:
             try:
-                current_price = round(float(all_prices[coin_symbol]), 5)  # Fiyatı 5 basamakla sınırla
+                # Fiyatı formatla
+                current_price = format_price(all_prices[coin_symbol])
             except (ValueError, TypeError):
-                print(f"{coin_symbol} için fiyat yuvarlanamadı.")
+                print(f"{coin_symbol} için fiyat formatlanamadı.")
                 continue
 
             current_time = time.strftime('%Y-%m-%d %H:%M:%S')
 
+            # Veritabanını güncelle
             crypto_collection.update_one(
                 {'_id': coin['_id']},
                 {'$set': {'guncel_fiyat': current_price, 'guncellenme_zamani': current_time}}
             )
             print(f"{coin_symbol} fiyatı güncellendi: {current_price}")
+
 
 def update_currency_prices():
     """
@@ -167,30 +186,73 @@ def update_currency_prices():
 
 def save_prices_to_history():
     """
-    Kripto ve döviz fiyatlarını geçmiş koleksiyonlara kaydeder.
+    Veritabanında yer alan kripto paralarla filtrelenmiş fiyatları kaydeder.
+    Fiyatlar, küçük değerlerde maksimum 6 ondalık basamak ile formatlanır.
     """
+    all_prices = get_all_crypto_prices()
+    if not all_prices:
+        print("Kripto fiyatları alınamadı.")
+        return
+    
     db = get_db_connection()
-    crypto_collection = db['Kripto Para']
     crypto_history = db['Kripto_Gecmis']
+    crypto_collection = db['Kripto Para']
 
-    for coin in crypto_collection.find():
-        crypto_history.insert_one({
-            'kripto_id': coin['_id'],
-            'fiyat': coin['guncel_fiyat'],
-            'tarih': time.strftime('%Y-%m-%d %H:%M:%S')
+    # Veritabanında kayıtlı olan kripto paraların isimlerini al
+    db_crypto_names = [coin["kripto_adi"] for coin in crypto_collection.find()]
+
+    current_time = time.time()
+    hour_start = time.strftime('%Y-%m-%d %H:00:00', time.gmtime(current_time))
+    hour_end = time.strftime('%Y-%m-%d %H:59:59', time.gmtime(current_time))
+
+    for symbol, price in all_prices.items():
+        # Sadece USDT tabanlı ve veritabanında kayıtlı olan kripto paraları işleme alıyoruz
+        if not symbol.endswith('USDT'):
+            continue
+
+        crypto_name = symbol.replace('USDT', '')
+
+        if crypto_name not in db_crypto_names:
+            continue  # Veritabanında olmayanları atla
+
+        # Fiyatı formatla
+        formatted_price = format_price(price)
+
+        # Daha önce kaydedilmiş bir saatlik dilim varsa, o kaydı güncelle
+        existing_record = crypto_history.find_one({
+            "crypto_name": crypto_name,
+            "open_time": hour_start
         })
 
-    currency_collection = db['Döviz']
-    currency_history = db['Döviz_Gecmis']
+        if existing_record:
+            # Mevcut kaydı güncelle
+            updated_data = {
+                "high": max(float(existing_record["high"]), float(formatted_price)),
+                "low": min(float(existing_record["low"]), float(formatted_price)),
+                "close": formatted_price,
+                "close_time": hour_end,
+            }
+            crypto_history.update_one(
+                {"_id": existing_record["_id"]},
+                {"$set": updated_data}
+            )
+            print(f"{crypto_name} için mevcut saatlik kayıt güncellendi: {updated_data}")
+        else:
+            # Yeni bir saatlik dilim kaydı oluştur
+            new_data = {
+                "crypto_name": crypto_name,
+                "open_time": hour_start,
+                "open": formatted_price,
+                "high": formatted_price,
+                "low": formatted_price,
+                "close": formatted_price,
+                "close_time": hour_end
+            }
+            crypto_history.insert_one(new_data)
+            print(f"{crypto_name} için yeni saatlik kayıt oluşturuldu: {new_data}")
 
-    for currency in currency_collection.find():
-        currency_history.insert_one({
-            'döviz_id': currency['_id'],
-            'fiyat': currency['guncel_fiyat'],
-            'tarih': time.strftime('%Y-%m-%d %H:%M:%S')
-        })
 
-    print("Fiyatlar geçmiş tablolara kaydedildi.")
+
 
 def start_price_updater():
     """
@@ -205,7 +267,7 @@ def start_price_updater():
         if update_count % 2 == 0:
             save_prices_to_history()
 
-        time.sleep(30)  # 30 saniyede bir fiyat güncellemesi
+        time.sleep(20000)  # 30 saniyede bir fiyat güncellemesi
 
 # Kullanım
 if __name__ == "__main__":
